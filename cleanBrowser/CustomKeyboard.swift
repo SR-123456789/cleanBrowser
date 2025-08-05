@@ -83,7 +83,7 @@ struct CustomKeyboard: View {
             ScrollView(.vertical, showsIndicators: false) {
                 switch currentLayout {
                 case .hiragana:
-                    keyboardGrid(rows: hiraganaRows)
+                    threeByFourJapaneseKeyboard()
                 case .katakana:
                     keyboardGrid(rows: katakanaRows)
                 case .english:
@@ -209,6 +209,73 @@ struct CustomKeyboard: View {
                         Spacer()
                             .frame(width: CGFloat(index * 15))
                     }
+                }
+            }
+        }
+        .padding(.horizontal)
+    }
+    
+    @ViewBuilder
+    private func threeByFourJapaneseKeyboard() -> some View {
+        let keys = [
+            ["あ", "か", "さ"],
+            ["た", "な", "は"],
+            ["ま", "や", "ら"],
+            ["わ", "^_^", "。？！"]
+        ]
+
+        VStack(spacing: 8) {
+            ForEach(keys, id: \ .self) { row in
+                HStack(spacing: 6) {
+                    ForEach(row, id: \ .self) { key in
+                        Button(action: {
+                            insertText(key)
+                        }) {
+                            Text(key)
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundColor(.black)
+                                .frame(maxWidth: .infinity, minHeight: 50)
+                                .background(Color.white)
+                                .cornerRadius(6)
+                                .shadow(radius: 0.5)
+                        }
+                    }
+                }
+            }
+
+            // Special keys row
+            HStack(spacing: 6) {
+                Button(action: {
+                    deleteLastCharacter()
+                }) {
+                    Image(systemName: "delete.left")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.black)
+                        .frame(width: 50, height: 50)
+                        .background(Color.gray.opacity(0.3))
+                        .cornerRadius(6)
+                }
+
+                Button(action: {
+                    insertText(" ")
+                }) {
+                    Text("空白")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.black)
+                        .frame(maxWidth: .infinity, minHeight: 50)
+                        .background(Color.gray.opacity(0.3))
+                        .cornerRadius(6)
+                }
+
+                Button(action: {
+                    insertText("\n")
+                }) {
+                    Text("改行")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity, minHeight: 50)
+                        .background(Color.blue)
+                        .cornerRadius(6)
                 }
             }
         }
