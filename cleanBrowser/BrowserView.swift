@@ -9,48 +9,62 @@ import SwiftUI
 import WebKit
 
 struct BrowserView: View {
-    @State private var webView: WKWebView?
+    @StateObject private var tabManager = TabManager()
     @State private var isKeyboardVisible = false
-    @State private var currentURL = "https://www.google.com"
-    @State private var canGoBack = false
-    @State private var canGoForward = false
-    @State private var isLoading = false
-    @State private var pageTitle = ""
     
     var body: some View {
         VStack(spacing: 0) {
             // ブラウザツールバー
-            BrowserToolbar(
-                currentURL: $currentURL,
-                canGoBack: $canGoBack,
-                canGoForward: $canGoForward,
-                isLoading: $isLoading,
-                pageTitle: $pageTitle,
-                webView: webView
-            )
+            if let activeTab = tabManager.activeTab {
+                BrowserToolbar(
+                    currentURL: Binding(
+                        get: { activeTab.url },
+                        set: { activeTab.url = $0 }
+                    ),
+                    canGoBack: Binding(
+                        get: { activeTab.canGoBack },
+                        set: { activeTab.canGoBack = $0 }
+                    ),
+                    canGoForward: Binding(
+                        get: { activeTab.canGoForward },
+                        set: { activeTab.canGoForward = $0 }
+                    ),
+                    isLoading: Binding(
+                        get: { activeTab.isLoading },
+                        set: { activeTab.isLoading = $0 }
+                    ),
+                    pageTitle: Binding(
+                        get: { activeTab.title },
+                        set: { activeTab.title = $0 }
+                    ),
+                    webView: activeTab.webView,
+                    tabCount: tabManager.tabs.count,
+                    showTabOverview: $tabManager.showTabOverview
+                )
+            }
             
             // WebView部分
-            WebViewRepresentable(
-                webView: $webView,
-                isKeyboardVisible: $isKeyboardVisible,
-                currentURL: $currentURL,
-                canGoBack: $canGoBack,
-                canGoForward: $canGoForward,
-                isLoading: $isLoading,
-                pageTitle: $pageTitle
-            )
-            .ignoresSafeArea(.keyboard)
+            if let activeTab = tabManager.activeTab {
+                WebViewRepresentable(
+                    tab: activeTab,
+                    isKeyboardVisible: $isKeyboardVisible
+                )
+                .ignoresSafeArea(.keyboard)
+            }
             
             // カスタムキーボード
             if isKeyboardVisible {
-                CustomKeyboard(webView: webView,isKeyboardVisible: $isKeyboardVisible)
+                CustomKeyboard(
+                    webView: tabManager.activeTab?.webView,
+                    isKeyboardVisible: $isKeyboardVisible
+                )
                     .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
         }
         .animation(.easeInOut(duration: 0.25), value: isKeyboardVisible)
         .navigationBarTitleDisplayMode(.inline)
-        .navigationTitle(pageTitle.isEmpty ? "Clean Browser" : pageTitle)
-        .navigationBarHidden(true) // ナビゲーションバーを非表示
+        .navigationTitle(tabManager.activeTab?.title ?? "Clean Browser")
+        .navigationBarHidden(true)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button("キーボード") {
@@ -69,6 +83,9 @@ struct BrowserView: View {
                 }
             }
         }
+        .sheet(isPresented: $tabManager.showTabOverview) {
+            TabOverviewView(tabManager: tabManager, isPresented: $tabManager.showTabOverview)
+        }
     }
 }
 
@@ -79,6 +96,8 @@ struct BrowserToolbar: View {
     @Binding var isLoading: Bool
     @Binding var pageTitle: String
     let webView: WKWebView?
+    var tabCount: Int
+    @Binding var showTabOverview: Bool
     
     @State private var addressText = ""
     @State private var isEditingAddress = false
@@ -182,16 +201,30 @@ struct BrowserToolbar: View {
                             .clipShape(Circle())
                     }
                     
-                    // シェア/メニューボタン
+                    // タブ管理ボタン（共有ボタンを置き換え）
                     Button(action: {
-                        // シェア機能やメニューを開く
+                        showTabOverview.toggle()
                     }) {
-                        Image(systemName: "square.and.arrow.up")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.primary)
-                            .frame(width: 44, height: 44)
-                            .background(Color(.tertiarySystemFill))
-                            .clipShape(Circle())
+                        ZStack {
+                            // タブアイコンの背景
+                            RoundedRectangle(cornerRadius: 4)
+                                .stroke(Color.primary, lineWidth: 2)
+                                .frame(width: 20, height: 16)
+                            
+                            // タブ数を表示（9以下の場合のみ）
+                            if tabCount <= 9 {
+                                Text("\(tabCount)")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundColor(.primary)
+                            } else {
+                                Text("∞")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundColor(.primary)
+                            }
+                        }
+                        .frame(width: 44, height: 44)
+                        .background(Color(.tertiarySystemFill))
+                        .clipShape(Circle())
                     }
                 }
             }
@@ -244,13 +277,8 @@ struct BrowserToolbar: View {
 }
 
 struct WebViewRepresentable: UIViewRepresentable {
-    @Binding var webView: WKWebView?
+    @ObservedObject var tab: BrowserTab
     @Binding var isKeyboardVisible: Bool
-    @Binding var currentURL: String
-    @Binding var canGoBack: Bool
-    @Binding var canGoForward: Bool
-    @Binding var isLoading: Bool
-    @Binding var pageTitle: String
     
     func makeUIView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
@@ -355,12 +383,12 @@ struct WebViewRepresentable: UIViewRepresentable {
         webView.configuration.userContentController.add(context.coordinator, name: "inputBlurred")
         
         // 最初にGoogleを読み込み
-        if let url = URL(string: "https://www.google.com") {
+        if let url = URL(string: tab.url) {
             webView.load(URLRequest(url: url))
         }
         
         DispatchQueue.main.async {
-            self.webView = webView
+            self.tab.webView = webView
         }
         
         return webView
@@ -395,24 +423,24 @@ struct WebViewRepresentable: UIViewRepresentable {
         // ブラウザナビゲーション機能
         func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
             DispatchQueue.main.async {
-                self.parent.isLoading = true
+                self.parent.tab.isLoading = true
             }
         }
         
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             DispatchQueue.main.async {
-                self.parent.isLoading = false
-                self.parent.canGoBack = webView.canGoBack
-                self.parent.canGoForward = webView.canGoForward
+                self.parent.tab.isLoading = false
+                self.parent.tab.canGoBack = webView.canGoBack
+                self.parent.tab.canGoForward = webView.canGoForward
                 
                 if let url = webView.url {
-                    self.parent.currentURL = url.absoluteString
+                    self.parent.tab.url = url.absoluteString
                 }
                 
                 webView.evaluateJavaScript("document.title") { result, error in
                     if let title = result as? String, !title.isEmpty {
                         DispatchQueue.main.async {
-                            self.parent.pageTitle = title
+                            self.parent.tab.title = title
                         }
                     }
                 }
@@ -421,13 +449,13 @@ struct WebViewRepresentable: UIViewRepresentable {
         
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
             DispatchQueue.main.async {
-                self.parent.isLoading = false
+                self.parent.tab.isLoading = false
             }
         }
         
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
             DispatchQueue.main.async {
-                self.parent.isLoading = false
+                self.parent.tab.isLoading = false
             }
         }
     }
