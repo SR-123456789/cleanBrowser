@@ -6,6 +6,9 @@ struct CustomKeyboard: View {
     
     @State private var currentLayout: KeyboardLayout = .hiragana
     @State private var isShiftPressed = false
+    @State private var lastPressedKey: String? = nil
+    @State private var lastPressedKeyIndex: Int = 0
+    @State private var lastKeyPressTime: Date = Date()
     
     enum KeyboardLayout: CaseIterable {
         case hiragana, katakana, english, numbers
@@ -22,13 +25,10 @@ struct CustomKeyboard: View {
     
     // ひらがな完全レイアウト
     let hiraganaRows = [
-        ["あ", "い", "う", "え", "お", "は", "ひ", "ふ", "へ", "ほ"],
-        ["か", "き", "く", "け", "こ", "ま", "み", "む", "め", "も"],
-        ["さ", "し", "す", "せ", "そ", "や", "ゆ", "よ", "ら", "り"],
-        ["た", "ち", "つ", "て", "と", "る", "れ", "ろ", "わ", "ん"],
-        ["な", "に", "ぬ", "ね", "の", "が", "ぎ", "ぐ", "げ", "ご"],
-        ["ざ", "じ", "ず", "ぜ", "ぞ", "だ", "ぢ", "づ", "で", "ど"],
-        ["ば", "び", "ぶ", "べ", "ぼ", "ぱ", "ぴ", "ぷ", "ぺ", "ぽ"]
+        ["あ", "か", "さ"],
+        ["た", "な", "は"],
+        ["ま", "や", "ら"],
+        ["^", "わ", "。?!"]
     ]
     
     // カタカナ完全レイアウト
@@ -56,6 +56,20 @@ struct CustomKeyboard: View {
         ["-", "_", "=", "+", "[", "]", "{", "}", "\\", "|"]
     ]
     
+    // Hiragana character cycles
+    let hiraganaCycles: [String: [String]] = [
+        "あ": ["あ", "い", "う", "え", "お"],
+        "か": ["か", "き", "く", "け", "こ"],
+        "さ": ["さ", "し", "す", "せ", "そ"],
+        "た": ["た", "ち", "つ", "て", "と"],
+        "な": ["な", "に", "ぬ", "ね", "の"],
+        "は": ["は", "ひ", "ふ", "へ", "ほ"],
+        "ま": ["ま", "み", "む", "め", "も"],
+        "や": ["や", "ゆ", "よ"],
+        "ら": ["ら", "り", "る", "れ", "ろ"],
+        "わ": ["わ", "を", "ん"]
+    ]
+
     var body: some View {
         VStack(spacing: 8) {
             // キーボードレイアウト切り替えタブ
@@ -83,7 +97,7 @@ struct CustomKeyboard: View {
             ScrollView(.vertical, showsIndicators: false) {
                 switch currentLayout {
                 case .hiragana:
-                    threeByFourJapaneseKeyboard()
+                    keyboardGrid(rows: hiraganaRows)
                 case .katakana:
                     keyboardGrid(rows: katakanaRows)
                 case .english:
@@ -154,26 +168,41 @@ struct CustomKeyboard: View {
     
     @ViewBuilder
     private func keyboardGrid(rows: [[String]]) -> some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 10), spacing: 4) {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
             ForEach(rows.flatMap { $0 }, id: \ .self) { character in
                 Button(action: {
-                    var textToInsert = character
-                    if currentLayout == .english && !isShiftPressed {
-                        textToInsert = character.lowercased()
-                    }
-                    insertText(textToInsert)
+                    handleHiraganaInput(character)
                 }) {
-                    Text(currentLayout == .english && !isShiftPressed ? character.lowercased() : character)
-                        .font(.system(size: 12, weight: .medium))
+                    Text(character)
+                        .font(.system(size: 20, weight: .medium))
                         .foregroundColor(.black)
-                        .frame(maxWidth: .infinity, minHeight: 35)
+                        .frame(maxWidth: .infinity, minHeight: 50)
                         .background(Color.white)
-                        .cornerRadius(4)
-                        .shadow(radius: 0.5)
+                        .cornerRadius(8)
+                        .shadow(radius: 1)
                 }
             }
         }
         .padding(.horizontal)
+    }
+    
+    private func handleHiraganaInput(_ character: String) {
+        if currentLayout == .hiragana, let cycle = hiraganaCycles[character] {
+            let now = Date()
+            if lastPressedKey == character && now.timeIntervalSince(lastKeyPressTime) < 0.5 {
+                // Cycle to the next character and replace the previous character
+                lastPressedKeyIndex = (lastPressedKeyIndex + 1) % cycle.count
+                deleteLastCharacter() // Remove the last character before inserting the new one
+            } else {
+                // Start a new cycle or add a new character
+                lastPressedKey = character
+                lastPressedKeyIndex = 0
+            }
+            lastKeyPressTime = now
+            insertText(cycle[lastPressedKeyIndex])
+        } else {
+            insertText(character)
+        }
     }
     
     @ViewBuilder
@@ -209,73 +238,6 @@ struct CustomKeyboard: View {
                         Spacer()
                             .frame(width: CGFloat(index * 15))
                     }
-                }
-            }
-        }
-        .padding(.horizontal)
-    }
-    
-    @ViewBuilder
-    private func threeByFourJapaneseKeyboard() -> some View {
-        let keys = [
-            ["あ", "か", "さ"],
-            ["た", "な", "は"],
-            ["ま", "や", "ら"],
-            ["わ", "^_^", "。？！"]
-        ]
-
-        VStack(spacing: 8) {
-            ForEach(keys, id: \ .self) { row in
-                HStack(spacing: 6) {
-                    ForEach(row, id: \ .self) { key in
-                        Button(action: {
-                            insertText(key)
-                        }) {
-                            Text(key)
-                                .font(.system(size: 16, weight: .bold))
-                                .foregroundColor(.black)
-                                .frame(maxWidth: .infinity, minHeight: 50)
-                                .background(Color.white)
-                                .cornerRadius(6)
-                                .shadow(radius: 0.5)
-                        }
-                    }
-                }
-            }
-
-            // Special keys row
-            HStack(spacing: 6) {
-                Button(action: {
-                    deleteLastCharacter()
-                }) {
-                    Image(systemName: "delete.left")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.black)
-                        .frame(width: 50, height: 50)
-                        .background(Color.gray.opacity(0.3))
-                        .cornerRadius(6)
-                }
-
-                Button(action: {
-                    insertText(" ")
-                }) {
-                    Text("空白")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(.black)
-                        .frame(maxWidth: .infinity, minHeight: 50)
-                        .background(Color.gray.opacity(0.3))
-                        .cornerRadius(6)
-                }
-
-                Button(action: {
-                    insertText("\n")
-                }) {
-                    Text("改行")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity, minHeight: 50)
-                        .background(Color.blue)
-                        .cornerRadius(6)
                 }
             }
         }
