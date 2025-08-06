@@ -9,6 +9,8 @@ struct CustomKeyboard: View {
     @State private var lastPressedKey: String? = nil
     @State private var lastPressedKeyIndex: Int = 0
     @State private var lastKeyPressTime: Date = Date()
+    @Binding var isKeyboardVisible: Bool
+
     
     enum KeyboardLayout: CaseIterable {
         case hiragana, katakana, english, numbers
@@ -74,6 +76,8 @@ struct CustomKeyboard: View {
         VStack(spacing: 8) {
             // キーボードレイアウト切り替えタブ
             HStack(spacing: 6) {
+                
+            
                 ForEach(KeyboardLayout.allCases, id: \ .self) { layout in
                     Button(action: {
                         currentLayout = layout
@@ -90,6 +94,18 @@ struct CustomKeyboard: View {
                             .cornerRadius(6)
                     }
                 }
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        isKeyboardVisible.toggle()
+                    }
+                }) {
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(.black)
+                        .frame(width: 40, height: 40)
+                        .background(Color.clear)
+                }
+                
             }
             .padding(.horizontal)
             

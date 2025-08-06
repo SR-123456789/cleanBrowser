@@ -43,13 +43,14 @@ struct BrowserView: View {
             
             // カスタムキーボード
             if isKeyboardVisible {
-                CustomKeyboard(webView: webView)
+                CustomKeyboard(webView: webView,isKeyboardVisible: $isKeyboardVisible)
                     .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
         }
         .animation(.easeInOut(duration: 0.25), value: isKeyboardVisible)
         .navigationBarTitleDisplayMode(.inline)
         .navigationTitle(pageTitle.isEmpty ? "Clean Browser" : pageTitle)
+        .navigationBarHidden(true) // ナビゲーションバーを非表示
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button("キーボード") {
