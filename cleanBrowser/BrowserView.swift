@@ -11,6 +11,7 @@ import WebKit
 struct BrowserView: View {
     @StateObject private var tabManager = TabManager()
     @State private var isKeyboardVisible = false
+    @State private var showPINSettings = false
     
     var body: some View {
         VStack(spacing: 0) {
@@ -39,7 +40,8 @@ struct BrowserView: View {
                     ),
                     webView: activeTab.webView,
                     tabCount: tabManager.tabs.count,
-                    showTabOverview: $tabManager.showTabOverview
+                    showTabOverview: $tabManager.showTabOverview,
+                    showPINSettings: $showPINSettings
                 )
             }
             
@@ -51,6 +53,7 @@ struct BrowserView: View {
                 )
                 .id(activeTab.id) // タブのIDをキーとして使用してビューの再生成を強制
                 .ignoresSafeArea(.keyboard)
+
             }
 
             
@@ -89,6 +92,9 @@ struct BrowserView: View {
         .sheet(isPresented: $tabManager.showTabOverview) {
             TabOverviewView(tabManager: tabManager, isPresented: $tabManager.showTabOverview)
         }
+        .sheet(isPresented: $showPINSettings) {
+            PINSettingsView()
+        }
     }
 }
 
@@ -101,6 +107,7 @@ struct BrowserToolbar: View {
     let webView: WKWebView?
     var tabCount: Int
     @Binding var showTabOverview: Bool
+    @Binding var showPINSettings: Bool
     
     @State private var addressText = ""
     @State private var isEditingAddress = false
@@ -228,6 +235,18 @@ struct BrowserToolbar: View {
                         .frame(width: 44, height: 44)
                         .background(Color(.tertiarySystemFill))
                         .clipShape(Circle())
+                    }
+                    
+                    // 設定ボタン
+                    Button(action: {
+                        showPINSettings.toggle()
+                    }) {
+                        Image(systemName: "gearshape")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(.primary)
+                            .frame(width: 44, height: 44)
+                            .background(Color(.tertiarySystemFill))
+                            .clipShape(Circle())
                     }
                 }
             }

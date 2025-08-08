@@ -4,10 +4,18 @@ struct ContentView: View {
     @State private var isUnlocked = false
     @State private var pinInput = ""
     @State private var showError = false
-    private let correctPIN = "1234" // 実際のアプリでは安全な方法で管理
+    @State private var showPINSettings = false
+    @State private var hasPINBeenSet = false
+    
+    private let pinManager = PINManager.shared
 
     var body: some View {
-        if isUnlocked {
+        // 初回起動時またはPIN未設定時は初期設定画面を表示
+        if (pinManager.isFirstLaunch || !pinManager.hasPINSet) && !hasPINBeenSet {
+            InitialPINSetupView(onPINSet: {
+                hasPINBeenSet = true
+            })
+        } else if isUnlocked {
             BrowserView()
                 .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ResetToPIN"))) { _ in
                     // アプリ切り替え後にPIN入力画面に戻る
@@ -19,8 +27,9 @@ struct ContentView: View {
             PINEntryScreen(
                 pinInput: $pinInput,
                 showError: $showError,
+                showPINSettings: $showPINSettings,
                 onPINEntered: { pin in
-                    if pin == correctPIN {
+                    if pinManager.verifyPIN(pin) {
                         withAnimation {
                             isUnlocked = true
                         }
@@ -33,6 +42,9 @@ struct ContentView: View {
                     }
                 }
             )
+            .sheet(isPresented: $showPINSettings) {
+                PINSettingsView()
+            }
         }
     }
 }
@@ -40,6 +52,7 @@ struct ContentView: View {
 struct PINEntryScreen: View {
     @Binding var pinInput: String
     @Binding var showError: Bool
+    @Binding var showPINSettings: Bool
     let onPINEntered: (String) -> Void
 
     var body: some View {

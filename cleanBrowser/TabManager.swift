@@ -28,19 +28,16 @@ class TabManager: ObservableObject {
     @Published var tabs: [BrowserTab] = []
     @Published var activeTabIndex: Int = 0 {
         didSet {
+            updateActiveTab()
             saveTabs()
         }
     }
+    @Published var activeTab: BrowserTab? = nil
     @Published var showTabOverview: Bool = false
     
     private let userDefaults = UserDefaults.standard
     private let tabsKey = "SavedTabs"
     private let activeTabIndexKey = "ActiveTabIndex"
-    
-    var activeTab: BrowserTab? {
-//        guard !tabs.isEmpty && activeTabIndex < tabs.count else { return nil }
-        return tabs[activeTabIndex]
-    }
     
     init() {
         loadTabs()
@@ -53,6 +50,7 @@ class TabManager: ObservableObject {
         let newTab = BrowserTab(url: url)
         tabs.append(newTab)
         activeTabIndex = tabs.count - 1
+        updateActiveTab()
         saveTabs()
     }
         
@@ -66,13 +64,19 @@ class TabManager: ObservableObject {
         } else if activeTabIndex > index {
             activeTabIndex -= 1
         }
+        updateActiveTab()
         saveTabs()
     }
     
     func switchToTab(at index: Int) {
+        print("Switching to tab at index \(index)")
         guard index < tabs.count else { return }
         activeTabIndex = index
-        print(tabs[activeTabIndex].url) // デバッグ用に現在のタブのURLを出力
+        print("Active tab index is now \(activeTabIndex)")
+    }
+    
+    private func updateActiveTab() {
+        activeTab = (activeTabIndex < tabs.count) ? tabs[activeTabIndex] : nil
     }
     
     // タブの状態を保存
@@ -102,5 +106,7 @@ class TabManager: ObservableObject {
         if activeTabIndex >= tabs.count {
             activeTabIndex = max(0, tabs.count - 1)
         }
+        
+        updateActiveTab()
     }
 }
