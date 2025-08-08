@@ -26,8 +26,16 @@ class BrowserTab: ObservableObject, Identifiable {
 // タブを管理するクラス
 class TabManager: ObservableObject {
     @Published var tabs: [BrowserTab] = []
-    @Published var activeTabIndex: Int = 0
+    @Published var activeTabIndex: Int = 0 {
+        didSet {
+            saveTabs()
+        }
+    }
     @Published var showTabOverview: Bool = false
+    
+    private let userDefaults = UserDefaults.standard
+    private let tabsKey = "SavedTabs"
+    private let activeTabIndexKey = "ActiveTabIndex"
     
     var activeTab: BrowserTab? {
 //        guard !tabs.isEmpty && activeTabIndex < tabs.count else { return nil }
@@ -35,13 +43,17 @@ class TabManager: ObservableObject {
     }
     
     init() {
-        addNewTab()
+        loadTabs()
+        if tabs.isEmpty {
+            addNewTab()
+        }
     }
     
     func addNewTab(url: String = "https://www.google.com") {
         let newTab = BrowserTab(url: url)
         tabs.append(newTab)
         activeTabIndex = tabs.count - 1
+        saveTabs()
     }
         
     func closeTab(at index: Int) {
@@ -54,12 +66,41 @@ class TabManager: ObservableObject {
         } else if activeTabIndex > index {
             activeTabIndex -= 1
         }
+        saveTabs()
     }
     
     func switchToTab(at index: Int) {
         guard index < tabs.count else { return }
         activeTabIndex = index
         print(tabs[activeTabIndex].url) // デバッグ用に現在のタブのURLを出力
+    }
+    
+    // タブの状態を保存
+    private func saveTabs() {
+        let tabsData = tabs.map { tab in
+            ["url": tab.url, "title": tab.title]
+        }
         
+        userDefaults.set(tabsData, forKey: tabsKey)
+        userDefaults.set(activeTabIndex, forKey: activeTabIndexKey)
+    }
+    
+    // タブの状態を復元
+    private func loadTabs() {
+        guard let tabsData = userDefaults.array(forKey: tabsKey) as? [[String: String]] else {
+            return
+        }
+        
+        tabs = tabsData.compactMap { data in
+            guard let url = data["url"], let title = data["title"] else { return nil }
+            let tab = BrowserTab(url: url)
+            tab.title = title
+            return tab
+        }
+        
+        activeTabIndex = userDefaults.integer(forKey: activeTabIndexKey)
+        if activeTabIndex >= tabs.count {
+            activeTabIndex = max(0, tabs.count - 1)
+        }
     }
 }
