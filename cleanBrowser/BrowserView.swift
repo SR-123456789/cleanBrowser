@@ -49,13 +49,16 @@ struct BrowserView: View {
                     tab: activeTab,
                     isKeyboardVisible: $isKeyboardVisible
                 )
+                .id(activeTab.id) // タブのIDをキーとして使用してビューの再生成を強制
                 .ignoresSafeArea(.keyboard)
             }
+
             
             // カスタムキーボード
             if isKeyboardVisible {
                 CustomKeyboard(
-                    webView: tabManager.activeTab?.webView,
+                    webView
+                    : tabManager.activeTab?.webView,
                     isKeyboardVisible: $isKeyboardVisible
                 )
                     .transition(.opacity.combined(with: .move(edge: .bottom)))

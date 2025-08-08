@@ -30,7 +30,7 @@ class TabManager: ObservableObject {
     @Published var showTabOverview: Bool = false
     
     var activeTab: BrowserTab? {
-        guard !tabs.isEmpty && activeTabIndex < tabs.count else { return nil }
+//        guard !tabs.isEmpty && activeTabIndex < tabs.count else { return nil }
         return tabs[activeTabIndex]
     }
     
@@ -43,7 +43,7 @@ class TabManager: ObservableObject {
         tabs.append(newTab)
         activeTabIndex = tabs.count - 1
     }
-    
+        
     func closeTab(at index: Int) {
         guard index < tabs.count && tabs.count > 1 else { return }
         
@@ -59,5 +59,7 @@ class TabManager: ObservableObject {
     func switchToTab(at index: Int) {
         guard index < tabs.count else { return }
         activeTabIndex = index
+        print(tabs[activeTabIndex].url) // デバッグ用に現在のタブのURLを出力
+        
     }
 }
