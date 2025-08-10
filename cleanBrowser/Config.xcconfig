@@ -1,0 +1,8 @@
+//
+//  Config.xcconfig
+//  cleanBrowser
+//
+//  Created by NakataniSoshi on 2025/08/10.
+//
+
+BROWSER_FOOT_ADBAR_ID=ca-app-pub-7782777506427620/9898233758

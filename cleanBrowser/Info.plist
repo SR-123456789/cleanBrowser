@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>BrowserFootAdBarId</key>
+	<string>$(BROWSER_FOOT_ADBAR_ID)</string>
+	<key>GADApplicationIdentifier</key>
+	<string>ca-app-pub-7782777506427620~5964742075</string>
+</dict>
+</plist>

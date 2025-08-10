@@ -6,13 +6,30 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		4ADC24BA2E4898AE00BB8416 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = 4ADC24B92E4898AE00BB8416 /* GoogleMobileAds */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		4AD131B02E3CD81400778077 /* cleanBrowser.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = cleanBrowser.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		4ADC24E12E489F2200BB8416 /* Exceptions for "cleanBrowser" folder in "cleanBrowser" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 4AD131AF2E3CD81400778077 /* cleanBrowser */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		4AD131B22E3CD81400778077 /* cleanBrowser */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				4ADC24E12E489F2200BB8416 /* Exceptions for "cleanBrowser" folder in "cleanBrowser" target */,
+			);
 			path = cleanBrowser;
 			sourceTree = "<group>";
 		};
@@ -23,6 +40,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4ADC24BA2E4898AE00BB8416 /* GoogleMobileAds in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +83,7 @@
 			);
 			name = cleanBrowser;
 			packageProductDependencies = (
+				4ADC24B92E4898AE00BB8416 /* GoogleMobileAds */,
 			);
 			productName = cleanBrowser;
 			productReference = 4AD131B02E3CD81400778077 /* cleanBrowser.app */;
@@ -94,6 +113,9 @@
 			);
 			mainGroup = 4AD131A72E3CD81400778077;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				4ADC24B82E4898AE00BB8416 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 4AD131B12E3CD81400778077 /* Products */;
 			projectDirPath = "";
@@ -255,7 +277,9 @@
 				DEVELOPMENT_TEAM = D94299A947;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = cleanBrowser/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "クリーンブラウザ";
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -285,7 +309,9 @@
 				DEVELOPMENT_TEAM = D94299A947;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = cleanBrowser/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "クリーンブラウザ";
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -326,6 +352,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		4ADC24B82E4898AE00BB8416 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/googleads/swift-package-manager-google-mobile-ads";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.8.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		4ADC24B92E4898AE00BB8416 /* GoogleMobileAds */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4ADC24B82E4898AE00BB8416 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */;
+			productName = GoogleMobileAds;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 4AD131A82E3CD81400778077 /* Project object */;
 }

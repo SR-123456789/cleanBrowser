@@ -7,6 +7,7 @@
 
 import SwiftUI
 import WebKit
+import GoogleMobileAds
 
 struct BrowserView: View {
     @StateObject private var tabManager = TabManager()
@@ -53,15 +54,17 @@ struct BrowserView: View {
                 )
                 .id(activeTab.id) // タブのIDをキーとして使用してビューの再生成を強制
                 .ignoresSafeArea(.keyboard)
-
             }
-
+            
+            // AdMobバナー広告（最小高さ50pt）
+            AdMobBannerView()
+                .frame(height: 50)
+                .background(Color(.systemBackground))
             
             // カスタムキーボード
             if isKeyboardVisible {
                 CustomKeyboard(
-                    webView
-                    : tabManager.activeTab?.webView,
+                    webView: tabManager.activeTab?.webView,
                     isKeyboardVisible: $isKeyboardVisible
                 )
                     .transition(.opacity.combined(with: .move(edge: .bottom)))
