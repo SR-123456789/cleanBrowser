@@ -10,7 +10,7 @@ import WebKit
 import GoogleMobileAds
 
 struct BrowserView: View {
-    @StateObject private var tabManager = TabManager()
+    @StateObject private var tabManager = TabManager.shared
     @State private var isKeyboardVisible = false
     @State private var showPINSettings = false
     

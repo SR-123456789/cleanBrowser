@@ -180,5 +180,5 @@ struct WebViewSnapshot: UIViewRepresentable {
 }
 
 #Preview {
-    TabOverviewView(tabManager: TabManager(), isPresented: .constant(true))
+    TabOverviewView(tabManager: TabManager.shared, isPresented: .constant(true))
 }

@@ -88,5 +88,5 @@ struct TabView: View {
 }
 
 #Preview {
-    TabBarView(tabManager: TabManager())
+    TabBarView(tabManager: TabManager.shared)
 }

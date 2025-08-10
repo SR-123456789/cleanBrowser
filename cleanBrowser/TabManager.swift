@@ -25,6 +25,8 @@ class BrowserTab: ObservableObject, Identifiable {
 
 // タブを管理するクラス
 class TabManager: ObservableObject {
+    static let shared = TabManager()
+    
     @Published var tabs: [BrowserTab] = []
     @Published var activeTabIndex: Int = 0 {
         didSet {
@@ -39,7 +41,7 @@ class TabManager: ObservableObject {
     private let tabsKey = "SavedTabs"
     private let activeTabIndexKey = "ActiveTabIndex"
     
-    init() {
+    private init() {
         loadTabs()
         if tabs.isEmpty {
             addNewTab()
@@ -80,13 +82,14 @@ class TabManager: ObservableObject {
     }
     
     // タブの状態を保存
-    private func saveTabs() {
+    func saveTabs() {
         let tabsData = tabs.map { tab in
             ["url": tab.url, "title": tab.title]
         }
         
         userDefaults.set(tabsData, forKey: tabsKey)
         userDefaults.set(activeTabIndex, forKey: activeTabIndexKey)
+        userDefaults.synchronize() // 即座に保存を実行
     }
     
     // タブの状態を復元
