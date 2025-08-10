@@ -10,6 +10,11 @@ struct CustomKeyboard: View {
     @State private var lastPressedKeyIndex: Int = 0
     @State private var lastKeyPressTime: Date = Date()
     @Binding var isKeyboardVisible: Bool
+    
+    // 濁点・半濁点機能用の状態変数
+    @State private var lastOutputChar: String? = nil
+    @State private var lastDakutenPressTime: Date = Date()
+    @State private var dakutenPressCount: Int = 0
 
     
     enum KeyboardLayout: CaseIterable {
@@ -30,7 +35,7 @@ struct CustomKeyboard: View {
         ["あ", "か", "さ"],
         ["た", "な", "は"],
         ["ま", "や", "ら"],
-        ["^", "わ", "。?!"]
+        ["゛", "わ", "。?!"]
     ]
     
     // カタカナ完全レイアウト
@@ -71,7 +76,22 @@ struct CustomKeyboard: View {
         "ら": ["ら", "り", "る", "れ", "ろ"],
         "わ": ["わ", "を", "ん"]
     ]
-
+    
+    // 濁点マッピング
+    let dakutenMap: [String: String] = [
+        "か": "が", "き": "ぎ", "く": "ぐ", "け": "げ", "こ": "ご",
+        "さ": "ざ", "し": "じ", "す": "ず", "せ": "ぜ", "そ": "ぞ",
+        "た": "だ", "ち": "ぢ", "つ": "づ", "て": "で", "と": "ど",
+        "は": "ば", "ひ": "び", "ふ": "ぶ", "へ": "べ", "ほ": "ぼ",
+        "う": "ゔ"
+    ]
+    
+    // 半濁点マッピング
+    let handakutenMap: [String: String] = [
+        "は": "ぱ", "ひ": "ぴ", "ふ": "ぷ", "へ": "ぺ", "ほ": "ぽ",
+        "ば": "ぱ", "び": "ぴ", "ぶ": "ぷ", "べ": "ぺ", "ぼ": "ぽ"
+    ]
+    
     var body: some View {
         VStack(spacing: 8) {
             // キーボードレイアウト切り替えタブ
@@ -203,6 +223,12 @@ struct CustomKeyboard: View {
     }
     
     private func handleHiraganaInput(_ character: String) {
+        // 日本語入力モードで「゛」キーが押された場合の濁点・半濁点処理
+        if currentLayout == .hiragana && character == "゛" {
+            handleDakutenHandakuten()
+            return
+        }
+        
         if currentLayout == .hiragana, let cycle = hiraganaCycles[character] {
             let now = Date()
             if lastPressedKey == character && now.timeIntervalSince(lastKeyPressTime) < 0.5 {
@@ -215,9 +241,64 @@ struct CustomKeyboard: View {
                 lastPressedKeyIndex = 0
             }
             lastKeyPressTime = now
-            insertText(cycle[lastPressedKeyIndex])
+            let outputChar = cycle[lastPressedKeyIndex]
+            insertText(outputChar)
+            // 最後に出力した文字を保存
+            lastOutputChar = outputChar
         } else {
             insertText(character)
+            // 最後に出力した文字を保存
+            lastOutputChar = character
+        }
+    }
+    
+    /// 濁点・半濁点変換処理
+    private func handleDakutenHandakuten() {
+        guard let lastChar = lastOutputChar else {
+            print("濁点・半濁点変換: 直前の文字がありません")
+            return
+        }
+        
+        let now = Date()
+        let timeSinceLastDakuten = now.timeIntervalSince(lastDakutenPressTime)
+        
+        // 0.5秒以内の連続押下かチェック
+        if timeSinceLastDakuten < 0.5 {
+            dakutenPressCount += 1
+        } else {
+            dakutenPressCount = 1
+        }
+        
+        lastDakutenPressTime = now
+        
+        var convertedChar: String?
+        
+        switch dakutenPressCount {
+        case 1:
+            // 1回目: 濁点変換を試行
+            convertedChar = dakutenMap[lastChar]
+            print("濁点変換試行: \(lastChar) -> \(convertedChar ?? "変換なし")")
+            
+        case 2:
+            // 2回目: 半濁点変換を試行
+            convertedChar = handakutenMap[lastChar]
+            print("半濁点変換試行: \(lastChar) -> \(convertedChar ?? "変換なし")")
+            
+        default:
+            // 3回目以降はリセット
+            dakutenPressCount = 1
+            convertedChar = dakutenMap[lastChar]
+            print("濁点変換リセット: \(lastChar) -> \(convertedChar ?? "変換なし")")
+        }
+        
+        // 変換可能な文字が見つかった場合、置換処理を実行
+        if let newChar = convertedChar {
+            deleteLastCharacter() // 直前の文字を削除
+            insertText(newChar)   // 新しい文字を挿入
+            lastOutputChar = newChar // 最新の出力文字を更新
+            print("濁点・半濁点変換成功: \(lastChar) -> \(newChar)")
+        } else {
+            print("濁点・半濁点変換: \(lastChar) は変換対象外です")
         }
     }
     
