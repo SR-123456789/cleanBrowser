@@ -7,7 +7,7 @@ class PINViewController: UIViewController {
         view.backgroundColor = .white
 
         let label = UILabel()
-        label.text = "Enter PIN"
+        label.text = "ピンを入力"
         label.textAlignment = .center
         label.translatesAutoresizingMaskIntoConstraints = false
 

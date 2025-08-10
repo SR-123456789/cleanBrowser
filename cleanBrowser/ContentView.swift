@@ -59,9 +59,8 @@ struct PINEntryScreen: View {
         VStack(spacing: 30) {
             Spacer()
 
-            Text("Enter PIN")
-                .font(.largeTitle)
-                .fontWeight(.bold)
+            Text("PINを入力してください")
+                .font(.system(size: 12)) // largeTitle の約1/3
 
             // PIN表示部分
             HStack(spacing: 20) {
@@ -73,7 +72,7 @@ struct PINEntryScreen: View {
             }
 
             if showError {
-                Text("Incorrect PIN")
+                Text("PINが間違えています")
                     .foregroundColor(.red)
                     .font(.headline)
             }

@@ -10,33 +10,13 @@ struct InitialPINSetupView: View {
     
     let onPINSet: () -> Void
     private let pinManager = PINManager.shared
-    
     var body: some View {
-        VStack(spacing: 20) {
-            // タイトル部分を圧縮
-            VStack(spacing: 15) {
-                Image(systemName: "lock.shield")
-                    .font(.system(size: 50))
-                    .foregroundColor(.blue)
-                
-                Text("Security Setup")
-                    .font(.title)
-                    .fontWeight(.bold)
-                    .foregroundColor(.white)
-                
-                Text("Set a 4-digit PIN to secure your browser")
-                    .font(.callout)
-                    .foregroundColor(.gray)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-            }
-            .padding(.top, 60)
-            
-            Spacer()
+        VStack {
+            Spacer() // 上余白
             
             if showNewPINEntry {
                 CompactPINEntrySection(
-                    title: "Create PIN",
+                    title: "PIN設定",
                     pinInput: $newPIN,
                     showError: $showError,
                     errorMessage: errorMessage,
@@ -47,7 +27,7 @@ struct InitialPINSetupView: View {
                 )
             } else if showConfirmPINEntry {
                 CompactPINEntrySection(
-                    title: "Confirm PIN",
+                    title: "もう一度入力",
                     pinInput: $confirmPIN,
                     showError: $showError,
                     errorMessage: errorMessage,
@@ -57,7 +37,7 @@ struct InitialPINSetupView: View {
                             onPINSet()
                         } else {
                             showError = true
-                            errorMessage = "PINs do not match. Try again."
+                            errorMessage = "PINが一致しません"
                             confirmPIN = ""
                             newPIN = ""
                             showConfirmPINEntry = false
@@ -70,13 +50,13 @@ struct InitialPINSetupView: View {
                 )
             }
             
-            Spacer()
+            Spacer() // 下余白
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.black)
         .ignoresSafeArea()
     }
 }
-
 struct CompactPINEntrySection: View {
     let title: String
     @Binding var pinInput: String

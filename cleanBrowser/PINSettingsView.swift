@@ -19,7 +19,7 @@ struct PINSettingsView: View {
             VStack(spacing: 30) {
                 if showCurrentPINEntry {
                     PINEntrySection(
-                        title: "Enter Current PIN",
+                        title: "現在のPINを入力してください",
                         pinInput: $currentPIN,
                         showError: $showError,
                         errorMessage: errorMessage,
@@ -30,7 +30,7 @@ struct PINSettingsView: View {
                                 showError = false
                             } else {
                                 showError = true
-                                errorMessage = "Incorrect current PIN"
+                                errorMessage = "PINが間違えています"
                                 currentPIN = ""
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                                     showError = false
@@ -40,7 +40,7 @@ struct PINSettingsView: View {
                     )
                 } else if showNewPINEntry {
                     PINEntrySection(
-                        title: "Enter New PIN",
+                        title: "新しいPINを入力してください",
                         pinInput: $newPIN,
                         showError: $showError,
                         errorMessage: errorMessage,
@@ -51,7 +51,7 @@ struct PINSettingsView: View {
                     )
                 } else if showConfirmPINEntry {
                     PINEntrySection(
-                        title: "Confirm New PIN",
+                        title: "もう一度新しいPINを入力してください",
                         pinInput: $confirmPIN,
                         showError: $showError,
                         errorMessage: errorMessage,
@@ -62,7 +62,7 @@ struct PINSettingsView: View {
                                 dismiss()
                             } else {
                                 showError = true
-                                errorMessage = "PINs do not match"
+                                errorMessage = "PINが一致しません。もう一度入力してください。"
                                 confirmPIN = ""
                                 newPIN = ""
                                 showConfirmPINEntry = false
@@ -102,7 +102,7 @@ struct PINEntrySection: View {
             Spacer()
             
             Text(title)
-                .font(.largeTitle)
+                .font(.system(size: 12))
                 .fontWeight(.bold)
                 .foregroundColor(.white)
             
@@ -118,7 +118,7 @@ struct PINEntrySection: View {
             if showError {
                 Text(errorMessage)
                     .foregroundColor(.red)
-                    .font(.headline)
+                    .font(.subheadline)
             }
             
             Spacer()
