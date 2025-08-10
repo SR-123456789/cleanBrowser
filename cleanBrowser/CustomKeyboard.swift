@@ -122,7 +122,7 @@ struct CustomKeyboard: View {
                     keyboardGrid(rows: numbersRows)
                 }
             }
-            .frame(maxHeight: 200)
+            .frame(height: mainAreaHeight)
             
             // 機能キー行
             HStack(spacing: 6) {
@@ -288,4 +288,18 @@ struct CustomKeyboard: View {
             }
         }
     }
+    
+    private var mainAreaHeight: CGFloat {
+        switch currentLayout {
+        case .hiragana:
+            return 225   // ← ひらがな
+        case .katakana:
+            return 225   // ← カタカナ（キー数が多いので少し高め）
+        case .english:
+            return 150
+        case .numbers:
+            return 150
+        }
+    }
+
 }
