@@ -25,6 +25,9 @@ import { cn } from "@/lib/utils"
 import IphoneMock from "./iphone-mock"
 import { FadeUp } from "./motion-pieces"
 
+// ブランド名（将来名称変更があってもここだけ直せば済むように）
+const BRAND = "NoPeek"
+
 type Props = {
   fontClassName?: string
 }
@@ -184,7 +187,7 @@ export default function LandingPage({ fontClassName = "" }: Props) {
                     <TableHead>{"ブラウザC"}</TableHead>
                     <TableHead>{"ブラウザS"}</TableHead>
                     <TableHead>{"ブラウザD"}</TableHead>
-                    <TableHead>{"CleanBrowser"}</TableHead>
+                    <TableHead>{BRAND}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -255,10 +258,10 @@ export default function LandingPage({ fontClassName = "" }: Props) {
                 <h3 id="download-title" className="text-2xl font-bold text-gray-900 sm:text-3xl">
                   {"貸せるスマホ。見られないブラウザ。"}
                 </h3>
-                <p className="mt-3 text-gray-600">{"履歴の便利さも、見せない安心も。CleanBrowserで両立しよう。"}</p>
+        <p className="mt-3 text-gray-600">{`履歴の便利さも、見せない安心も。${BRAND}で両立しよう。`}</p>
                 <div className="mt-8 flex items-center justify-center gap-3">
                   <RainbowBorderButton asChild>
-                    <a href="#" data-cta="download" aria-label="CleanBrowser をダウンロード">
+          <a href="#" data-cta="download" aria-label={`${BRAND} をダウンロード`}>
                       <Lock className="mr-2 h-4 w-4" aria-hidden="true" />
                       {"今すぐはじめる"}
                     </a>
@@ -282,11 +285,11 @@ function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-transparent bg-white/70 backdrop-blur supports-[backdrop-filter]:bg-white/60">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-        <Link href="#hero" className="flex items-center gap-2" aria-label="CleanBrowser ホームへ">
+        <Link href="#hero" className="flex items-center gap-2" aria-label={`${BRAND} ホームへ`}>
           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-600 text-white shadow-sm">
             <Lock className="h-4 w-4" aria-hidden="true" />
           </div>
-          <span className="text-sm font-bold tracking-tight text-gray-900">{"CleanBrowser"}</span>
+          <span className="text-sm font-bold tracking-tight text-gray-900">{BRAND}</span>
         </Link>
 
         <nav aria-label="メインナビゲーション" className="hidden items-center gap-6 md:flex">
@@ -316,7 +319,7 @@ function Footer() {
         <div className="flex items-center gap-2 text-sm text-gray-500">
           <Lock className="h-4 w-4 text-violet-600" aria-hidden="true" />
           <span>
-            {"© "} {new Date().getFullYear()} {" CleanBrowser"}
+            {"© "} {new Date().getFullYear()} {` ${BRAND}`}
           </span>
         </div>
         <div className="flex items-center gap-6 text-sm text-gray-600">
