@@ -40,14 +40,12 @@ struct CustomKeyboard: View {
     
     // カタカナ完全レイアウト
     let katakanaRows = [
-        ["ア", "イ", "ウ", "エ", "オ", "ハ", "ヒ", "フ", "ヘ", "ホ"],
-        ["カ", "キ", "ク", "ケ", "コ", "マ", "ミ", "ム", "メ", "モ"],
-        ["サ", "シ", "ス", "セ", "ソ", "ヤ", "ユ", "ヨ", "ラ", "リ"],
-        ["タ", "チ", "ツ", "テ", "ト", "ル", "レ", "ロ", "ワ", "ン"],
-        ["ナ", "ニ", "ヌ", "ネ", "ノ", "ガ", "ギ", "グ", "ゲ", "ゴ"],
-        ["ザ", "ジ", "ズ", "ゼ", "ゾ", "ダ", "ヂ", "ヅ", "デ", "ド"],
-        ["バ", "ビ", "ブ", "ベ", "ボ", "パ", "ピ", "プ", "ペ", "ポ"]
+        ["ア", "カ", "サ"],
+        ["タ", "ナ", "ハ"],
+        ["マ", "ヤ", "ラ"],
+        ["゛", "ワ", "。?!"]
     ]
+
     
     // 英語QWERTYレイアウト
     let englishRows = [
@@ -77,19 +75,42 @@ struct CustomKeyboard: View {
         "わ": ["わ", "を", "ん","ー"]
     ]
     
+    let katakanaCycles: [String: [String]] = [
+        "ア": ["ア", "イ", "ウ", "エ", "オ"],
+        "カ": ["カ", "キ", "ク", "ケ", "コ"],
+        "サ": ["サ", "シ", "ス", "セ", "ソ"],
+        "タ": ["タ", "チ", "ツ", "テ", "ト"],
+        "ナ": ["ナ", "ニ", "ヌ", "ネ", "ノ"],
+        "ハ": ["ハ", "ヒ", "フ", "ヘ", "ホ"],
+        "マ": ["マ", "ミ", "ム", "メ", "モ"],
+        "ヤ": ["ヤ", "ユ", "ヨ"],
+        "ラ": ["ラ", "リ", "ル", "レ", "ロ"],
+        "ワ": ["ワ", "ヲ", "ン", "ー"]
+    ]
+
+    
     // 濁点マッピング
     let dakutenMap: [String: String] = [
         "か": "が", "き": "ぎ", "く": "ぐ", "け": "げ", "こ": "ご",
         "さ": "ざ", "し": "じ", "す": "ず", "せ": "ぜ", "そ": "ぞ",
         "た": "だ", "ち": "ぢ", "つ": "づ", "て": "で", "と": "ど",
         "は": "ば", "ひ": "び", "ふ": "ぶ", "へ": "べ", "ほ": "ぼ",
-        "う": "ゔ","や":"ゃ", "ゆ":"ゅ", "よ":"ょ"
+        "う": "ゔ","や":"ゃ", "ゆ":"ゅ", "よ":"ょ",
+        // カタカナ
+        "カ": "ガ", "キ": "ギ", "ク": "グ", "ケ": "ゲ", "コ": "ゴ",
+        "サ": "ザ", "シ": "ジ", "ス": "ズ", "セ": "ゼ", "ソ": "ゾ",
+        "タ": "ダ", "チ": "ヂ", "ツ": "ヅ", "テ": "デ", "ト": "ド",
+        "ハ": "バ", "ヒ": "ビ", "フ": "ブ", "ヘ": "ベ", "ホ": "ボ",
+        "ウ": "ヴ", "ヤ": "ャ", "ユ": "ュ", "ヨ": "ョ"
     ]
     
     // 半濁点マッピング
     let handakutenMap: [String: String] = [
         "は": "ぱ", "ひ": "ぴ", "ふ": "ぷ", "へ": "ぺ", "ほ": "ぽ",
-        "ば": "ぱ", "び": "ぴ", "ぶ": "ぷ", "べ": "ぺ", "ぼ": "ぽ"
+        "ば": "ぱ", "び": "ぴ", "ぶ": "ぷ", "べ": "ぺ", "ぼ": "ぽ",
+        
+        "ハ": "パ", "ヒ": "ピ", "フ": "プ", "ヘ": "ペ", "ホ": "ポ",
+        "バ": "パ", "ビ": "ピ", "ブ": "プ", "ベ": "ペ", "ボ": "ポ"
     ]
     
     var body: some View {
@@ -224,12 +245,28 @@ struct CustomKeyboard: View {
     
     private func handleHiraganaInput(_ character: String) {
         // 日本語入力モードで「゛」キーが押された場合の濁点・半濁点処理
-        if currentLayout == .hiragana && character == "゛" {
+        if (currentLayout == .hiragana || currentLayout == .katakana) && character == "゛" {
             handleDakutenHandakuten()
             return
         }
         
         if currentLayout == .hiragana, let cycle = hiraganaCycles[character] {
+            let now = Date()
+            if lastPressedKey == character && now.timeIntervalSince(lastKeyPressTime) < 0.5 {
+                // Cycle to the next character and replace the previous character
+                lastPressedKeyIndex = (lastPressedKeyIndex + 1) % cycle.count
+                deleteLastCharacter() // Remove the last character before inserting the new one
+            } else {
+                // Start a new cycle or add a new character
+                lastPressedKey = character
+                lastPressedKeyIndex = 0
+            }
+            lastKeyPressTime = now
+            let outputChar = cycle[lastPressedKeyIndex]
+            insertText(outputChar)
+            // 最後に出力した文字を保存
+            lastOutputChar = outputChar
+        } else if currentLayout == .katakana, let cycle = katakanaCycles[character] {
             let now = Date()
             if lastPressedKey == character && now.timeIntervalSince(lastKeyPressTime) < 0.5 {
                 // Cycle to the next character and replace the previous character
