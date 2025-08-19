@@ -20,6 +20,7 @@ private enum AdsConfig {
 
 struct AdMobBannerView: UIViewRepresentable {
     let adUnitID: String
+    @EnvironmentObject var attManager: ATTManager
     
     // 既定値：Info.plist の BrowserFootAdBarId（なければテストID）
     init(adUnitID: String = {
@@ -42,16 +43,35 @@ struct AdMobBannerView: UIViewRepresentable {
         }
         
         let request = Request()
+        
+        // ATTの許可状況に応じて広告リクエストを設定
+        if !attManager.canShowPersonalizedAds {
+            // パーソナライズされていない広告をリクエスト
+            let extras = Extras()
+            extras.additionalParameters = ["npa": "1"]
+            request.register(extras)
+        }
+        
         bannerView.load(request)
         return bannerView
     }
     
     func updateUIView(_ uiView: BannerView, context: Context) {
-        // 必要に応じて再読み込みなど
+        // ATTステータスが変更された場合、広告を再読み込み
+        let request = Request()
+        
+        if !attManager.canShowPersonalizedAds {
+            let extras = Extras()
+            extras.additionalParameters = ["npa": "1"]
+            request.register(extras)
+        }
+        
+        uiView.load(request)
     }
 }
 
 #Preview {
     AdMobBannerView()
         .frame(height: 50)
+        .environmentObject(ATTManager())
 }

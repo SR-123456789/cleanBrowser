@@ -2,9 +2,18 @@ import SwiftUI
 
 @main
 struct cleanBrowserApp: App {
+    @StateObject private var attManager = ATTManager()
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(attManager)
+                .onAppear {
+                    // アプリ起動時にATTダイアログを表示
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                        attManager.showATTDialogIfNeeded()
+                    }
+                }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
                     if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
                        let window = windowScene.windows.first {

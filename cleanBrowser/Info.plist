@@ -6,5 +6,7 @@
 	<string>$(BROWSER_FOOT_ADBAR_ID)</string>
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-7782777506427620~5964742075</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>このアプリでは、広告を最適化してより良い体験を提供するために、他社のアプリやWebサイトでのアクティビティを基にした広告配信を行います。</string>
 </dict>
 </plist>
