@@ -54,11 +54,12 @@ struct CustomKeyboard: View {
         ["Z", "X", "C", "V", "B", "N", "M"]
     ]
     
-    // 数字・記号レイアウト
+    // 数字・記号レイアウト（QWERTY配列）
     let numbersRows = [
         ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
         ["!", "@", "#", "$", "%", "^", "&", "*", "(", ")"],
-        ["-", "_", "=", "+", "[", "]", "{", "}", "\\", "|"]
+        ["-", "_", "=", "+", "[", "]", ";", ":", "'", "\""],
+        [".", ",", "?", "/", "\\", "|", "<", ">", "{", "}"]
     ]
     
     // Hiragana character cycles
@@ -160,7 +161,7 @@ struct CustomKeyboard: View {
                 case .english:
                     englishKeyboard()
                 case .numbers:
-                    keyboardGrid(rows: numbersRows)
+                    numbersKeyboard()
                 }
             }
             .frame(height: mainAreaHeight)
@@ -361,7 +362,41 @@ struct CustomKeyboard: View {
                             Text(isShiftPressed ? character : character.lowercased())
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundColor(.black)
-                                .frame(maxWidth: .infinity, minHeight: 35)
+                                .frame(maxWidth: .infinity, minHeight: 37)
+                                .background(Color.white)
+                                .cornerRadius(4)
+                                .shadow(radius: 0.5)
+                        }
+                    }
+                    
+                    if index > 0 {
+                        Spacer()
+                            .frame(width: CGFloat(index * 15))
+                    }
+                }
+            }
+        }
+        .padding(.horizontal)
+    }
+    
+    private func numbersKeyboard() -> some View {
+        VStack(spacing: 4) {
+            ForEach(Array(numbersRows.enumerated()), id: \ .offset) { index, row in
+                HStack(spacing: 3) {
+                    // 2行目以降はインデント
+                    if index > 0 {
+                        Spacer()
+                            .frame(width: CGFloat(index * 15))
+                    }
+                    
+                    ForEach(row, id: \ .self) { character in
+                        Button(action: {
+                            insertText(character)
+                        }) {
+                            Text(isShiftPressed ? character : character.lowercased())
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.black)
+                                .frame(maxWidth: .infinity, minHeight: 37)
                                 .background(Color.white)
                                 .cornerRadius(4)
                                 .shadow(radius: 0.5)
@@ -414,9 +449,9 @@ struct CustomKeyboard: View {
         case .katakana:
             return 225   // ← カタカナ（キー数が多いので少し高め）
         case .english:
-            return 150
+            return 160
         case .numbers:
-            return 150
+            return 160
         }
     }
 
