@@ -7,6 +7,13 @@ export const metadata: Metadata = {
   title: 'NoPeek',
   description: 'NoPeek - 徹底的に隠す。最強のシークレットブラウザ。',
   generator: 'v0.dev',
+  alternates: {
+    canonical: '/',
+  },
+  other: {
+    // iOS Smart App Banner
+    'apple-itunes-app': 'app-id=6749825483, affiliate-data=, app-argument=https://apps.apple.com/app/id6749825483'
+  }
 }
 
 export default function RootLayout({
@@ -15,7 +22,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+  <html lang="ja">
       <head>
         <style>{`
 html {
