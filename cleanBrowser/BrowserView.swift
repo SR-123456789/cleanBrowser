@@ -15,51 +15,48 @@ struct BrowserView: View {
     @State private var showPINSettings = false
     
     var body: some View {
-        VStack(spacing: 0) {
-            // ブラウザツールバー
-            if let activeTab = tabManager.activeTab {
-                BrowserToolbar(
-                    currentURL: Binding(
-                        get: { activeTab.url },
-                        set: { activeTab.url = $0 }
-                    ),
-                    canGoBack: Binding(
-                        get: { activeTab.canGoBack },
-                        set: { activeTab.canGoBack = $0 }
-                    ),
-                    canGoForward: Binding(
-                        get: { activeTab.canGoForward },
-                        set: { activeTab.canGoForward = $0 }
-                    ),
-                    isLoading: Binding(
-                        get: { activeTab.isLoading },
-                        set: { activeTab.isLoading = $0 }
-                    ),
-                    pageTitle: Binding(
-                        get: { activeTab.title },
-                        set: { activeTab.title = $0 }
-                    ),
-                    webView: activeTab.webView,
-                    tabCount: tabManager.tabs.count,
-                    showTabOverview: $tabManager.showTabOverview,
-                    showPINSettings: $showPINSettings
-                )
+            VStack(spacing: 0) {
+                // ブラウザツールバー
+                if let activeTab = tabManager.activeTab {
+                    BrowserToolbar(
+                        currentURL: Binding(
+                            get: { activeTab.url },
+                            set: { activeTab.url = $0 }
+                        ),
+                        canGoBack: Binding(
+                            get: { activeTab.canGoBack },
+                            set: { activeTab.canGoBack = $0 }
+                        ),
+                        canGoForward: Binding(
+                            get: { activeTab.canGoForward },
+                            set: { activeTab.canGoForward = $0 }
+                        ),
+                        isLoading: Binding(
+                            get: { activeTab.isLoading },
+                            set: { activeTab.isLoading = $0 }
+                        ),
+                        pageTitle: Binding(
+                            get: { activeTab.title },
+                            set: { activeTab.title = $0 }
+                        ),
+                        webView: activeTab.webView,
+                        tabCount: tabManager.tabs.count,
+                        showTabOverview: $tabManager.showTabOverview,
+                        showPINSettings: $showPINSettings
+                    )
+                
+                // WebView部分
+                if let activeTab = tabManager.activeTab {
+                    WebViewRepresentable(
+                        tab: activeTab,
+                        isKeyboardVisible: $isKeyboardVisible
+                    )
+                    .id(activeTab.id) // タブのIDをキーとして使用してビューの再生成を強制
+                    .ignoresSafeArea(.keyboard)
+                }
             }
             
-            // WebView部分
-            if let activeTab = tabManager.activeTab {
-                WebViewRepresentable(
-                    tab: activeTab,
-                    isKeyboardVisible: $isKeyboardVisible
-                )
-                .id(activeTab.id) // タブのIDをキーとして使用してビューの再生成を強制
-                .ignoresSafeArea(.keyboard)
-            }
-            
-            // AdMobバナー広告（最小高さ50pt）
-            AdMobBannerView()
-                .frame(height: 50)
-                .background(Color(.systemBackground))
+
             
             // カスタムキーボード
             if isKeyboardVisible {
@@ -69,6 +66,10 @@ struct BrowserView: View {
                 )
                     .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
+                // AdMobバナー広告（最小高さ50pt）
+            AdMobBannerView()
+                .frame(height: 50)
+                .background(Color(.systemBackground))
         }
         .animation(.easeInOut(duration: 0.25), value: isKeyboardVisible)
         .navigationBarTitleDisplayMode(.inline)

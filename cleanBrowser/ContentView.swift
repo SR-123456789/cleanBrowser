@@ -23,6 +23,12 @@ struct ContentView: View {
                     pinInput = ""
                     showError = false
                 }
+                .ignoresSafeArea(.container, edges: .bottom) // ← 下端だけ外へ
+                        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ResetToPIN"))) { _ in
+                            isUnlocked = false
+                            pinInput = ""
+                            showError = false
+                        }
         } else {
             PINEntryScreen(
                 pinInput: $pinInput,
@@ -46,7 +52,9 @@ struct ContentView: View {
                 PINSettingsView()
             }
         }
+
     }
+    
 }
 
 struct PINEntryScreen: View {
