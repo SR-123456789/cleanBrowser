@@ -15,26 +15,30 @@ private enum AdsConfig {
         Bundle.main.object(forInfoDictionaryKey: key) as? String ?? ""
     }
     static var footerBanner: String { info("BrowserFootAdBarId") }
-    static let testBanner = "ca-app-pub-7782777506427620~5964742075"
+    // Google のテスト用バナー広告ユニットID
+//    static let testBannerUnitId = "ca-app-pub-3940256099942544/2934735716"
+    static let testBannerUnitId = "ca-app-pub-7782777506427620/9898233758"
+
 }
 
 struct AdMobBannerView: UIViewRepresentable {
     let adUnitID: String
     @EnvironmentObject var attManager: ATTManager
     
-    // 既定値：Info.plist の BrowserFootAdBarId（なければテストID）
+    // 既定値：Info.plist の BrowserFootAdBarId（なければテスト用バナーID）
     init(adUnitID: String = {
         let v = AdsConfig.footerBanner.trimmingCharacters(in: .whitespacesAndNewlines)
-        return v.isEmpty ? AdsConfig.testBanner : v
+        return v.isEmpty ? AdsConfig.testBannerUnitId : v
     }()) {
         self.adUnitID = adUnitID
     }
     
     func makeUIView(context: Context) -> BannerView {
-        let bannerView = BannerView(adSize: AdSizeBanner) // 320x50の標準バナー
+        // 320x50 の標準バナー（必要に応じて Adaptive に変更可能）
+        let bannerView = BannerView(adSize: AdSizeBanner)
         bannerView.adUnitID = adUnitID
         
-        // rootViewControllerをできるだけ安全に取得
+        // rootViewController をできるだけ安全に取得
         if let scene = UIApplication.shared.connectedScenes
             .compactMap({ $0 as? UIWindowScene })
             .first(where: { $0.activationState == .foregroundActive }),
@@ -44,9 +48,8 @@ struct AdMobBannerView: UIViewRepresentable {
         
         let request = Request()
         
-        // ATTの許可状況に応じて広告リクエストを設定
+        // ATT の許可状況に応じて広告リクエストを設定
         if !attManager.canShowPersonalizedAds {
-            // パーソナライズされていない広告をリクエスト
             let extras = Extras()
             extras.additionalParameters = ["npa": "1"]
             request.register(extras)
@@ -57,15 +60,13 @@ struct AdMobBannerView: UIViewRepresentable {
     }
     
     func updateUIView(_ uiView: BannerView, context: Context) {
-        // ATTステータスが変更された場合、広告を再読み込み
+        // ATT ステータスが変更された場合など、広告を再読み込み
         let request = Request()
-        
         if !attManager.canShowPersonalizedAds {
             let extras = Extras()
             extras.additionalParameters = ["npa": "1"]
             request.register(extras)
         }
-        
         uiView.load(request)
     }
 }
