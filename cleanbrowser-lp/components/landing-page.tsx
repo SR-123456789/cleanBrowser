@@ -144,7 +144,18 @@ export default function LandingPage({ fontClassName = "" }: Props) {
                 desc="便利な履歴を守りつつ、第三者には一切見せない。"
                 delay={0.2}
               />
+              <BenefitCard
+                icon={<Lock className="h-5 w-5 text-violet-600" aria-hidden="true" />}
+                title="ワンタップ即ミュート"
+                desc="突然の動画音声も瞬時に消音。事前にミュート状態にしておけば再生中も音は出ない。"
+                delay={0.25}
+              />
             </div>
+            <FadeUp delay={0.35}>
+              <p className="mt-6 text-sm text-gray-600 leading-relaxed">
+                {`準備としてミュートボタンを先に押しておけば、その後開いたタブやページで動画・広告が勝手に再生されても音は発生しません。公共の場や静かな環境、終電間際の車内などで“突然鳴って焦る”場面を減らせます。`}
+              </p>
+            </FadeUp>
           </div>
         </section>
 
