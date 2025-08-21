@@ -17,6 +17,7 @@ class BrowserTab: ObservableObject, Identifiable {
     @Published var canGoBack: Bool = false
     @Published var canGoForward: Bool = false
     @Published var isLoading: Bool = false
+    @Published var isMuted: Bool = false // 追加: タブごとのミュート状態
     
     init(url: String = "https://www.google.com") {
         self.url = url

@@ -19,6 +19,7 @@ struct BrowserView: View {
                 // ブラウザツールバー
                 if let activeTab = tabManager.activeTab {
                     BrowserToolbar(
+                        tab: activeTab,
                         currentURL: Binding(
                             get: { activeTab.url },
                             set: { activeTab.url = $0 }
@@ -103,6 +104,7 @@ struct BrowserView: View {
 }
 
 struct BrowserToolbar: View {
+    @ObservedObject var tab: BrowserTab // 追加: 観測してUI更新
     @Binding var currentURL: String
     @Binding var canGoBack: Bool
     @Binding var canGoForward: Bool
@@ -112,6 +114,7 @@ struct BrowserToolbar: View {
     var tabCount: Int
     @Binding var showTabOverview: Bool
     @Binding var showPINSettings: Bool
+    // isMuted Binding を削除し、tab.isMuted を使用
     
     @State private var addressText = ""
     @State private var isEditingAddress = false
@@ -203,11 +206,12 @@ struct BrowserToolbar: View {
                 
                 // 右側のアクションボタン群
                 HStack(spacing: UI.hSpacing) {
-                    // リロード/ストップボタン
+                    // ミュート切り替えボタン
                     Button(action: {
-                        if isLoading { webView?.stopLoading() } else { webView?.reload() }
+                        tab.isMuted.toggle()
+                        setMuted(tab.isMuted)
                     }) {
-                        Image(systemName: isLoading ? "xmark" : "arrow.clockwise")
+                        Image(systemName: tab.isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
                             .font(.system(size: UI.iconSize, weight: .medium))
                             .foregroundColor(.primary)
                             .frame(width: UI.buttonSize, height: UI.buttonSize)
@@ -215,7 +219,7 @@ struct BrowserToolbar: View {
                             .clipShape(Circle())
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(isLoading ? "Stop" : "Reload")
+                    .accessibilityLabel(tab.isMuted ? "Unmute" : "Mute")
                     
                     // 設定ボタン
                     Button(action: { showPINSettings.toggle() }) {
@@ -272,6 +276,12 @@ struct BrowserToolbar: View {
         )
     }
     
+    private func setMuted(_ muted: Bool) {
+        guard let webView else { return }
+        let js = WebViewRepresentable.muteJS(muted)
+        webView.evaluateJavaScript(js, completionHandler: nil)
+    }
+    
     private func loadURL(_ urlString: String) {
         guard let webView = webView else { return }
         
@@ -305,6 +315,25 @@ struct BrowserToolbar: View {
 struct WebViewRepresentable: UIViewRepresentable {
     @ObservedObject var tab: BrowserTab
     @Binding var isKeyboardVisible: Bool
+    
+    // JS generator for muting/unmuting all media elements and future ones
+    static func muteJS(_ muted: Bool) -> String {
+        let flag = muted ? "true" : "false"
+        return """
+        (function(){try{
+          var m=
+        """ + flag + """
+        ;window.__appMuted=m;
+          var apply=function(el){try{if(!el)return; if(m){ if(el.dataset.prevvol===undefined){el.dataset.prevvol=el.volume;} el.muted=true; el.volume=0; } else { el.muted=false; if(el.dataset.prevvol!==undefined){el.volume=Number(el.dataset.prevvol); delete el.dataset.prevvol;} else { el.volume=1; } }}catch(e){}};
+          var list=document.querySelectorAll('audio,video'); if(list){ list.forEach(apply); }
+          if(!window.__appMuteInstalled){ window.__appMuteInstalled=true; 
+            var obs=new MutationObserver(function(muts){ muts.forEach(function(mu){ (mu.addedNodes||[]).forEach(function(n){ try{ if(n && (n.tagName==='AUDIO'||n.tagName==='VIDEO')){ apply(n); } else if(n && n.querySelectorAll){ n.querySelectorAll('audio,video').forEach(apply); } }catch(e){} }); }); });
+            obs.observe(document.documentElement||document.body,{childList:true,subtree:true});
+            document.addEventListener('play',function(e){ var el=e.target; if(el&&(el.tagName==='AUDIO'||el.tagName==='VIDEO')&&window.__appMuted){ apply(el); } }, true);
+          }
+        }catch(e){}})();
+        """
+    }
     
     func makeUIView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
@@ -469,6 +498,11 @@ struct WebViewRepresentable: UIViewRepresentable {
                             self.parent.tab.title = title
                         }
                     }
+                }
+                
+                // 再適用: ミュート状態ならナビゲーション後に適用
+                if self.parent.tab.isMuted {
+                    webView.evaluateJavaScript(WebViewRepresentable.muteJS(true), completionHandler: nil)
                 }
             }
         }
