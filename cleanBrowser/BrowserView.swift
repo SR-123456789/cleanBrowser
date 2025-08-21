@@ -116,37 +116,47 @@ struct BrowserToolbar: View {
     @State private var addressText = ""
     @State private var isEditingAddress = false
     
+    // UI constants
+    private enum UI {
+        static let buttonSize: CGFloat = 36
+        static let iconSize: CGFloat = 16
+        static let hSpacing: CGFloat = 12
+        static let toolbarHPadding: CGFloat = 12
+        static let toolbarVPadding: CGFloat = 8
+        static let addressCorner: CGFloat = 12
+    }
+    
     var body: some View {
         VStack(spacing: 0) {
             // メインツールバー
-            HStack(spacing: 16) {
+            HStack(spacing: UI.hSpacing) {
                 // 左側のナビゲーションボタン群
-                HStack(spacing: 12) {
+                HStack(spacing: UI.hSpacing) {
                     // 戻るボタン
-                    Button(action: {
-                        webView?.goBack()
-                    }) {
+                    Button(action: { webView?.goBack() }) {
                         Image(systemName: "chevron.left")
-                            .font(.system(size: 18, weight: .medium))
+                            .font(.system(size: UI.iconSize, weight: .medium))
                             .foregroundColor(canGoBack ? .primary : .secondary)
-                            .frame(width: 44, height: 44)
+                            .frame(width: UI.buttonSize, height: UI.buttonSize)
                             .background(Color(.tertiarySystemFill))
                             .clipShape(Circle())
                     }
                     .disabled(!canGoBack)
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Back")
                     
                     // 進むボタン
-                    Button(action: {
-                        webView?.goForward()
-                    }) {
+                    Button(action: { webView?.goForward() }) {
                         Image(systemName: "chevron.right")
-                            .font(.system(size: 18, weight: .medium))
+                            .font(.system(size: UI.iconSize, weight: .medium))
                             .foregroundColor(canGoForward ? .primary : .secondary)
-                            .frame(width: 44, height: 44)
+                            .frame(width: UI.buttonSize, height: UI.buttonSize)
                             .background(Color(.tertiarySystemFill))
                             .clipShape(Circle())
                     }
                     .disabled(!canGoForward)
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Forward")
                 }
                 
                 // 中央のアドレスバー
@@ -158,16 +168,18 @@ struct BrowserToolbar: View {
                     
                     // URL表示・編集
                     if isEditingAddress {
-                        TextField("URLまたは検索語を入力", text: $addressText)
-                            .textFieldStyle(PlainTextFieldStyle())
+                        TextField("Enter URL or search", text: $addressText)
+                            .textFieldStyle(.plain)
                             .font(.system(size: 14, weight: .medium))
+                            .submitLabel(.go)
+                            .keyboardType(.URL)
+                            .autocapitalization(.none)
+                            .disableAutocorrection(true)
                             .onSubmit {
                                 loadURL(addressText)
                                 isEditingAddress = false
                             }
-                            .onAppear {
-                                addressText = currentURL
-                            }
+                            .onAppear { addressText = currentURL }
                     } else {
                         HStack {
                             Text(formatURL(currentURL))
@@ -175,57 +187,54 @@ struct BrowserToolbar: View {
                                 .foregroundColor(.primary)
                                 .lineLimit(1)
                                 .truncationMode(.middle)
-                            
                             Spacer()
-                            
                             Image(systemName: "arrow.clockwise")
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundColor(.secondary)
                         }
-                        .onTapGesture {
-                            isEditingAddress = true
-                        }
+                        .contentShape(Rectangle())
+                        .onTapGesture { isEditingAddress = true }
                     }
                 }
                 .padding(.horizontal, 12)
-                .padding(.vertical, 10)
+                .padding(.vertical, 8)
                 .background(Color(.secondarySystemBackground))
-                .cornerRadius(10)
-                .onTapGesture {
-                    if !isEditingAddress {
-                        isEditingAddress = true
-                    }
-                }
+                .cornerRadius(UI.addressCorner)
                 
                 // 右側のアクションボタン群
-                HStack(spacing: 12) {
+                HStack(spacing: UI.hSpacing) {
                     // リロード/ストップボタン
                     Button(action: {
-                        if isLoading {
-                            webView?.stopLoading()
-                        } else {
-                            webView?.reload()
-                        }
+                        if isLoading { webView?.stopLoading() } else { webView?.reload() }
                     }) {
                         Image(systemName: isLoading ? "xmark" : "arrow.clockwise")
-                            .font(.system(size: 16, weight: .medium))
+                            .font(.system(size: UI.iconSize, weight: .medium))
                             .foregroundColor(.primary)
-                            .frame(width: 44, height: 44)
+                            .frame(width: UI.buttonSize, height: UI.buttonSize)
                             .background(Color(.tertiarySystemFill))
                             .clipShape(Circle())
                     }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(isLoading ? "Stop" : "Reload")
                     
-                    // タブ管理ボタン（共有ボタンを置き換え）
-                    Button(action: {
-                        showTabOverview.toggle()
-                    }) {
+                    // 設定ボタン
+                    Button(action: { showPINSettings.toggle() }) {
+                        Image(systemName: "gearshape")
+                            .font(.system(size: UI.iconSize, weight: .medium))
+                            .foregroundColor(.primary)
+                            .frame(width: UI.buttonSize, height: UI.buttonSize)
+                            .background(Color(.tertiarySystemFill))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Settings")
+                    
+                    // タブ管理ボタン
+                    Button(action: { showTabOverview.toggle() }) {
                         ZStack {
-                            // タブアイコンの背景
                             RoundedRectangle(cornerRadius: 4)
                                 .stroke(Color.primary, lineWidth: 2)
-                                .frame(width: 20, height: 16)
-                            
-                            // タブ数を表示（9以下の場合のみ）
+                                .frame(width: 16, height: 12)
                             if tabCount <= 9 {
                                 Text("\(tabCount)")
                                     .font(.system(size: 10, weight: .bold))
@@ -236,26 +245,17 @@ struct BrowserToolbar: View {
                                     .foregroundColor(.primary)
                             }
                         }
-                        .frame(width: 44, height: 44)
+                        .frame(width: UI.buttonSize, height: UI.buttonSize)
                         .background(Color(.tertiarySystemFill))
                         .clipShape(Circle())
                     }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Tabs")
                     
-                    // 設定ボタン
-                    Button(action: {
-                        showPINSettings.toggle()
-                    }) {
-                        Image(systemName: "gearshape")
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundColor(.primary)
-                            .frame(width: 44, height: 44)
-                            .background(Color(.tertiarySystemFill))
-                            .clipShape(Circle())
-                    }
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+            .padding(.horizontal, UI.toolbarHPadding)
+            .padding(.vertical, UI.toolbarVPadding)
             
             // プログレスバー
             if isLoading {

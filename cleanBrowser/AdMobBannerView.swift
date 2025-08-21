@@ -16,7 +16,12 @@ private enum AdsConfig {
     }
     static var footerBanner: String { info("BrowserFootAdBarId") }
     // Google のテスト用バナー広告ユニットID
+    
+    //テスト
 //    static let testBannerUnitId = "ca-app-pub-3940256099942544/2934735716"
+    
+    
+    //本番
     static let testBannerUnitId = "ca-app-pub-7782777506427620/9898233758"
 
 }
