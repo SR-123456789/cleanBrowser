@@ -29,6 +29,8 @@ class TabManager: ObservableObject {
     static let shared = TabManager()
     
     @Published var tabs: [BrowserTab] = []
+    // アプリ全体のミュート状態（全タブ共通）
+    @Published var isMutedGlobal: Bool = false
     @Published var activeTabIndex: Int = 0 {
         didSet {
             updateActiveTab()
@@ -80,6 +82,16 @@ class TabManager: ObservableObject {
     
     private func updateActiveTab() {
         activeTab = (activeTabIndex < tabs.count) ? tabs[activeTabIndex] : nil
+    }
+
+    // 全タブにミュート設定を適用
+    func applyMuteToAllTabs(_ muted: Bool) {
+        isMutedGlobal = muted
+        let js = WebViewRepresentable.muteJS(muted)
+        for tab in tabs {
+            tab.isMuted = muted // 互換性のため更新（将来的に削除可）
+            tab.webView?.evaluateJavaScript(js, completionHandler: nil)
+        }
     }
     
     // タブの状態を保存

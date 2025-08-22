@@ -206,20 +206,20 @@ struct BrowserToolbar: View {
                 
                 // 右側のアクションボタン群
                 HStack(spacing: UI.hSpacing) {
-                    // ミュート切り替えボタン
+                    // ミュート切り替えボタン（アプリ全体）
                     Button(action: {
-                        tab.isMuted.toggle()
-                        setMuted(tab.isMuted)
+                        let newMuted = !TabManager.shared.isMutedGlobal
+                        TabManager.shared.applyMuteToAllTabs(newMuted)
                     }) {
-                        Image(systemName: tab.isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                        Image(systemName: TabManager.shared.isMutedGlobal ? "speaker.slash.fill" : "speaker.wave.2.fill")
                             .font(.system(size: UI.iconSize, weight: .medium))
-                            .foregroundColor(.primary)
+                            .foregroundColor(TabManager.shared.isMutedGlobal ? .red : .primary)
                             .frame(width: UI.buttonSize, height: UI.buttonSize)
                             .background(Color(.tertiarySystemFill))
                             .clipShape(Circle())
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(tab.isMuted ? "Unmute" : "Mute")
+                    .accessibilityLabel(TabManager.shared.isMutedGlobal ? "Unmute" : "Mute")
                     
                     // 設定ボタン
                     Button(action: { showPINSettings.toggle() }) {
@@ -512,8 +512,8 @@ struct WebViewRepresentable: UIViewRepresentable {
                     }
                 }
                 
-                // 再適用: ミュート状態ならナビゲーション後に適用
-                if self.parent.tab.isMuted {
+                // 再適用: アプリ全体のミュートが有効なら適用
+                if TabManager.shared.isMutedGlobal {
                     webView.evaluateJavaScript(WebViewRepresentable.muteJS(true), completionHandler: nil)
                 }
             }
