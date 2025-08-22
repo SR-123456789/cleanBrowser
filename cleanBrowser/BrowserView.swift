@@ -52,7 +52,7 @@ struct BrowserView: View {
                         tab: activeTab,
                         isKeyboardVisible: $isKeyboardVisible
                     )
-                    .id(activeTab.id) // タブのIDをキーとして使用してビューの再生成を強制
+                    .id(activeTab.id) // タブIDでビュー差し替え（WebView本体は再利用）
                     .ignoresSafeArea(.keyboard)
                 }
             }
@@ -336,23 +336,34 @@ struct WebViewRepresentable: UIViewRepresentable {
     }
     
     func makeUIView(context: Context) -> WKWebView {
+        // 既存のwebViewがあればそれを返す。なければ生成して保存。
+        if let existing = tab.webView {
+            // 再アタッチ時もナビゲーションデリゲートだけ更新
+            existing.navigationDelegate = context.coordinator
+            let uc = existing.configuration.userContentController
+            uc.removeScriptMessageHandler(forName: "inputFocused")
+            uc.removeScriptMessageHandler(forName: "inputBlurred")
+            uc.add(context.coordinator, name: "inputFocused")
+            uc.add(context.coordinator, name: "inputBlurred")
+            
+            if existing.url == nil, let url = URL(string: tab.url) {
+                existing.load(URLRequest(url: url))
+            }
+            return existing
+        }
+
         let configuration = WKWebViewConfiguration()
         let webView = WKWebView(frame: .zero, configuration: configuration)
-        
-        // ナビゲーションデリゲートを設定
-        webView.navigationDelegate = context.coordinator
-        
+
         // WebViewの設定
         webView.scrollView.keyboardDismissMode = .onDrag
         webView.allowsBackForwardNavigationGestures = true
-        
-        // iOSキーボードを無効化
         webView.scrollView.isScrollEnabled = true
         if #available(iOS 16.4, *) {
             webView.isInspectable = true
         }
-        
-        // JavaScript注入でinput要素のキーボード表示を無効化
+
+        // JavaScript注入でinput要素のキーボード表示を無効化（初期生成時のみ）
         let userScript = WKUserScript(
             source: """
                 (function() {
@@ -432,20 +443,21 @@ struct WebViewRepresentable: UIViewRepresentable {
             injectionTime: .atDocumentStart,
             forMainFrameOnly: false
         )
-        
         webView.configuration.userContentController.addUserScript(userScript)
-        webView.configuration.userContentController.add(context.coordinator, name: "inputFocused")
-        webView.configuration.userContentController.add(context.coordinator, name: "inputBlurred")
-        
-        // 最初にGoogleを読み込み
+
+        // デリゲートとメッセージハンドラ設定
+        webView.navigationDelegate = context.coordinator
+        let uc = webView.configuration.userContentController
+        uc.add(context.coordinator, name: "inputFocused")
+        uc.add(context.coordinator, name: "inputBlurred")
+
+        // 初回URL読み込み
         if let url = URL(string: tab.url) {
             webView.load(URLRequest(url: url))
         }
-        
-        DispatchQueue.main.async {
-            self.tab.webView = webView
-        }
-        
+
+        // 生成したwebViewを保持
+        self.tab.webView = webView
         return webView
     }
     
