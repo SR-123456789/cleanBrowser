@@ -31,6 +31,12 @@ class TabManager: ObservableObject {
     @Published var tabs: [BrowserTab] = []
     // アプリ全体のミュート状態（全タブ共通）
     @Published var isMutedGlobal: Bool = false
+    // URL移動前の確認ダイアログ（アプリ全体設定）
+    @Published var confirmNavigation: Bool = false {
+        didSet {
+            userDefaults.set(confirmNavigation, forKey: confirmNavigationKey)
+        }
+    }
     @Published var activeTabIndex: Int = 0 {
         didSet {
             updateActiveTab()
@@ -43,12 +49,17 @@ class TabManager: ObservableObject {
     private let userDefaults = UserDefaults.standard
     private let tabsKey = "SavedTabs"
     private let activeTabIndexKey = "ActiveTabIndex"
+    private let confirmNavigationKey = "ConfirmNavigationEnabled"
+    private let isMutedGlobalKey = "GlobalMuted"
     
     private init() {
         loadTabs()
         if tabs.isEmpty {
             addNewTab()
         }
+    // 設定の読み込み
+    self.confirmNavigation = userDefaults.bool(forKey: confirmNavigationKey)
+    self.isMutedGlobal = userDefaults.bool(forKey: isMutedGlobalKey)
     }
     
     func addNewTab(url: String = "https://www.google.com") {
@@ -87,6 +98,7 @@ class TabManager: ObservableObject {
     // 全タブにミュート設定を適用
     func applyMuteToAllTabs(_ muted: Bool) {
         isMutedGlobal = muted
+    userDefaults.set(muted, forKey: isMutedGlobalKey)
         let js = WebViewRepresentable.muteJS(muted)
         for tab in tabs {
             tab.isMuted = muted // 互換性のため更新（将来的に削除可）

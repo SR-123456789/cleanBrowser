@@ -13,6 +13,7 @@ struct BrowserView: View {
     @StateObject private var tabManager = TabManager.shared
     @State private var isKeyboardVisible = false
     @State private var showPINSettings = false
+    @State private var showSettingsSheet = false
     
     var body: some View {
             VStack(spacing: 0) {
@@ -43,7 +44,8 @@ struct BrowserView: View {
                         webView: activeTab.webView,
                         tabCount: tabManager.tabs.count,
                         showTabOverview: $tabManager.showTabOverview,
-                        showPINSettings: $showPINSettings
+                        showPINSettings: $showPINSettings,
+                        showSettingsSheet: $showSettingsSheet
                     )
                 
                 // WebView部分
@@ -86,20 +88,14 @@ struct BrowserView: View {
             }
             
             ToolbarItem(placement: .navigationBarLeading) {
-                Button("テスト") {
-                    print("現在のキーボード状態: \(isKeyboardVisible)")
-                    withAnimation(.easeInOut(duration: 0.25)) {
-                        isKeyboardVisible = true
-                    }
-                }
+                Button("設定") { showSettingsSheet = true }
             }
         }
         .sheet(isPresented: $tabManager.showTabOverview) {
             TabOverviewView(tabManager: tabManager, isPresented: $tabManager.showTabOverview)
         }
-        .sheet(isPresented: $showPINSettings) {
-            PINSettingsView()
-        }
+    .sheet(isPresented: $showPINSettings) { PINSettingsView() }
+    .sheet(isPresented: $showSettingsSheet) { SettingsSheet(showPINSettings: $showPINSettings) }
     }
 }
 
@@ -114,7 +110,9 @@ struct BrowserToolbar: View {
     var tabCount: Int
     @Binding var showTabOverview: Bool
     @Binding var showPINSettings: Bool
+    @Binding var showSettingsSheet: Bool
     // isMuted Binding を削除し、tab.isMuted を使用
+    @ObservedObject private var tabManager = TabManager.shared
     
     @State private var addressText = ""
     @State private var isEditingAddress = false
@@ -221,8 +219,8 @@ struct BrowserToolbar: View {
                     .buttonStyle(.plain)
                     .accessibilityLabel(TabManager.shared.isMutedGlobal ? "Unmute" : "Mute")
                     
-                    // 設定ボタン
-                    Button(action: { showPINSettings.toggle() }) {
+                    // 設定ボタン（設定シートを開く）
+                    Button(action: { showSettingsSheet = true }) {
                         Image(systemName: "gearshape")
                             .font(.system(size: UI.iconSize, weight: .medium))
                             .foregroundColor(.primary)
@@ -274,6 +272,7 @@ struct BrowserToolbar: View {
                 .fill(.ultraThinMaterial)
                 .ignoresSafeArea()
         )
+    // 設定シートはBrowserViewの末尾で一元管理
     }
     
     private func setMuted(_ muted: Bool) {
@@ -469,6 +468,8 @@ struct WebViewRepresentable: UIViewRepresentable {
     
     class Coordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
         var parent: WebViewRepresentable
+    // ナビゲーション確認の再入防止フラグ
+    private var bypassNextDecision = false
         
         init(_ parent: WebViewRepresentable) {
             self.parent = parent
@@ -488,6 +489,53 @@ struct WebViewRepresentable: UIViewRepresentable {
         }
         
         // ブラウザナビゲーション機能
+        func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+            // 既にバイパス許可中ならそのまま許可
+            if bypassNextDecision {
+                bypassNextDecision = false
+                decisionHandler(.allow)
+                return
+            }
+
+            // トグルが無効、もしくはユーザー操作以外なら許可
+            let confirmOn = TabManager.shared.confirmNavigation
+            let isUserGesture = navigationAction.navigationType != .other
+            guard confirmOn, isUserGesture else {
+                decisionHandler(.allow)
+                return
+            }
+
+            // 同一URLへの再読み込み等はスキップ
+            if let current = webView.url, let reqURL = navigationAction.request.url, current == reqURL {
+                decisionHandler(.allow)
+                return
+            }
+
+            // 確認アラートを表示
+            let target = navigationAction.request.url?.absoluteString ?? "このページ"
+            DispatchQueue.main.async {
+                let alert = UIAlertController(title: "移動しますか？", message: target, preferredStyle: .alert)
+                alert.addAction(UIAlertAction(title: "キャンセル", style: .cancel, handler: { _ in
+                    decisionHandler(.cancel)
+                }))
+                alert.addAction(UIAlertAction(title: "移動", style: .default, handler: { _ in
+                    // 次のdecidePolicyは許可して再実行させる
+                    self.bypassNextDecision = true
+                    webView.load(navigationAction.request)
+                    decisionHandler(.cancel)
+                }))
+
+                // 最前面のUIViewControllerを取得して表示
+                if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                   let root = scene.keyWindow?.rootViewController {
+                    root.present(alert, animated: true, completion: nil)
+                } else if let root = UIApplication.shared.windows.first?.rootViewController {
+                    root.present(alert, animated: true, completion: nil)
+                } else {
+                    decisionHandler(.allow)
+                }
+            }
+        }
         func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
             DispatchQueue.main.async {
                 self.parent.tab.isLoading = true
