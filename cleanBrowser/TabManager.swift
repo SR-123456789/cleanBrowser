@@ -32,7 +32,8 @@ class TabManager: ObservableObject {
     // アプリ全体のミュート状態（全タブ共通）
     @Published var isMutedGlobal: Bool = false
     // URL移動前の確認ダイアログ（アプリ全体設定）
-    @Published var confirmNavigation: Bool = false {
+    // デフォルト: 有効 (true)。既に保存された設定があればそれを使用。
+    @Published var confirmNavigation: Bool = true {
         didSet {
             userDefaults.set(confirmNavigation, forKey: confirmNavigationKey)
         }
@@ -57,9 +58,11 @@ class TabManager: ObservableObject {
         if tabs.isEmpty {
             addNewTab()
         }
-    // 設定の読み込み
-    self.confirmNavigation = userDefaults.bool(forKey: confirmNavigationKey)
-    self.isMutedGlobal = userDefaults.bool(forKey: isMutedGlobalKey)
+        // 設定の読み込み: 保存済みのキーが無ければデフォルト(true)を維持
+        if userDefaults.object(forKey: confirmNavigationKey) != nil {
+            self.confirmNavigation = userDefaults.bool(forKey: confirmNavigationKey)
+        }
+        self.isMutedGlobal = userDefaults.bool(forKey: isMutedGlobalKey)
     }
     
     func addNewTab(url: String = "https://www.google.com") {
