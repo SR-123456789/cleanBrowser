@@ -342,8 +342,10 @@ struct WebViewRepresentable: UIViewRepresentable {
             let uc = existing.configuration.userContentController
             uc.removeScriptMessageHandler(forName: "inputFocused")
             uc.removeScriptMessageHandler(forName: "inputBlurred")
+            uc.removeScriptMessageHandler(forName: "confirmNav")
             uc.add(context.coordinator, name: "inputFocused")
             uc.add(context.coordinator, name: "inputBlurred")
+            uc.add(context.coordinator, name: "confirmNav")
             
             if existing.url == nil, let url = URL(string: tab.url) {
                 existing.load(URLRequest(url: url))
@@ -362,7 +364,7 @@ struct WebViewRepresentable: UIViewRepresentable {
             webView.isInspectable = true
         }
 
-        // JavaScript注入でinput要素のキーボード表示を無効化（初期生成時のみ）
+    // JavaScript注入でinput要素のキーボード表示を無効化（初期生成時のみ）
         let userScript = WKUserScript(
             source: """
                 (function() {
@@ -444,11 +446,57 @@ struct WebViewRepresentable: UIViewRepresentable {
         )
         webView.configuration.userContentController.addUserScript(userScript)
 
+                // ナビゲーションガード（リンククリック＆History APIのフック）
+                let navGuardScript = WKUserScript(
+                        source: """
+                        (function(){try{
+                            if(window.__navGuardInstalled) return; window.__navGuardInstalled=true; window.__confirmNavOn=false;
+                            function abs(u){ try { return new URL(u, location.href).href; } catch(e){ return null; } }
+                            // anchor clicks
+                            document.addEventListener('click', function(e){
+                                try{
+                                    if(!window.__confirmNavOn) return;
+                                    var el = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+                                    if(!el) return;
+                                    var href = el.getAttribute('href'); if(!href) return;
+                                    if(/^(javascript:|mailto:|tel:)/i.test(href)) return;
+                                    var url = abs(href); if(!url) return;
+                                    var tgt = el.getAttribute('target'); if(tgt && tgt !== '_self') return;
+                                    e.preventDefault();
+                                    window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.confirmNav && window.webkit.messageHandlers.confirmNav.postMessage({type:'anchor', url:url, from: location.host});
+                                }catch(_){}
+                            }, true);
+
+                            // history API
+                            (function(){
+                                var origPush = history.pushState; var origReplace = history.replaceState;
+                                history.pushState = function(state,title,url){
+                                    try{
+                                        if(window.__confirmNavOn && url){ var u=abs(url); if(u){ window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.confirmNav && window.webkit.messageHandlers.confirmNav.postMessage({type:'history', method:'push', url:u}); return; } }
+                                    }catch(_){}
+                                    return origPush.apply(this, arguments);
+                                };
+                                history.replaceState = function(state,title,url){
+                                    try{
+                                        if(window.__confirmNavOn && url){ var u=abs(url); if(u){ window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.confirmNav && window.webkit.messageHandlers.confirmNav.postMessage({type:'history', method:'push', url:u, from: location.host}); return; } }
+                                    }catch(_){}
+                                    return origReplace.apply(this, arguments);
+                                };
+                                window.__proceedNav = function(payload){ try{ var t=payload&&payload.type; var m=payload&&payload.method; var u=payload&&payload.url; if(!u) return; if(t==='history'){ if(m==='replace'){ history.replaceState({},'',u); } else { history.pushState({},'',u); } } else { location.assign(u); } }catch(_){}}
+                                    try{
+                                        if(window.__confirmNavOn && url){ var u=abs(url); if(u){ window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.confirmNav && window.webkit.messageHandlers.confirmNav.postMessage({type:'history', method:'replace', url:u, from: location.host}); return; } }
+                        """,
+                        injectionTime: .atDocumentStart,
+                        forMainFrameOnly: true
+                )
+                webView.configuration.userContentController.addUserScript(navGuardScript)
+
         // デリゲートとメッセージハンドラ設定
         webView.navigationDelegate = context.coordinator
-        let uc = webView.configuration.userContentController
-        uc.add(context.coordinator, name: "inputFocused")
-        uc.add(context.coordinator, name: "inputBlurred")
+    let uc = webView.configuration.userContentController
+    uc.add(context.coordinator, name: "inputFocused")
+    uc.add(context.coordinator, name: "inputBlurred")
+    uc.add(context.coordinator, name: "confirmNav")
 
         // 初回URL読み込み
         if let url = URL(string: tab.url) {
@@ -470,6 +518,30 @@ struct WebViewRepresentable: UIViewRepresentable {
         var parent: WebViewRepresentable
     // ナビゲーション確認の再入防止フラグ
     private var bypassNextDecision = false
+    // JS経由で承認済みのURL（次回のネイティブ判定で自動許可）
+    private var approvedURLFromJS: URL?
+
+        // 検索エンジンドメインの簡易判定
+        private func isSearchEngineHost(_ host: String?) -> Bool {
+            guard let h = host?.lowercased() else { return false }
+            return h == "www.google.com" || h == "google.com" || h.hasSuffix(".google.com")
+                || h == "www.bing.com" || h == "bing.com"
+                || h == "search.yahoo.co.jp" || h == "yahoo.co.jp" || h.hasSuffix(".yahoo.co.jp")
+        }
+
+        // 確認が必要かどうかの判定
+        private func needsConfirm(current: URL?, to reqURL: URL, fromHost: String?) -> Bool {
+            // スキーマチェックは呼び出し側で済
+            // 1) 同一ドメイン内は確認なし
+            if let cur = current, cur.host?.lowercased() == reqURL.host?.lowercased() {
+                return false
+            }
+            // 2) 検索エンジン発→外部でも確認なし（直遷移許可）
+            if isSearchEngineHost(fromHost) {
+                return false
+            }
+            return true
+        }
         
         init(_ parent: WebViewRepresentable) {
             self.parent = parent
@@ -482,6 +554,34 @@ struct WebViewRepresentable: UIViewRepresentable {
                     self.parent.isKeyboardVisible = true
                 case "inputBlurred":
                     self.parent.isKeyboardVisible = false
+                case "confirmNav":
+                    guard TabManager.shared.confirmNavigation else { return }
+                    guard let body = message.body as? [String: Any], let url = body["url"] as? String else { return }
+                    let fromHost = body["from"] as? String
+                    let target = url
+                    let proceedJS = "window.__proceedNav(" + (try? String(data: JSONSerialization.data(withJSONObject: body), encoding: .utf8))! + ");"
+                    // from が検索エンジン or 同一ドメインの場合は確認なしで進める
+                    if let u = URL(string: url) {
+                        let allowWithoutDialog = !self.needsConfirm(current: self.parent.tab.webView?.url, to: u, fromHost: fromHost)
+                        if allowWithoutDialog {
+                            self.approvedURLFromJS = u
+                            self.parent.tab.webView?.evaluateJavaScript(proceedJS, completionHandler: nil)
+                            return
+                        }
+                    }
+                    let alert = UIAlertController(title: "移動しますか？", message: target, preferredStyle: .alert)
+                    alert.addAction(UIAlertAction(title: "キャンセル", style: .cancel, handler: { _ in }))
+                    alert.addAction(UIAlertAction(title: "移動", style: .default, handler: { _ in
+                        // ユーザー許可後、JS側を進める
+            if let u = URL(string: url) { self.approvedURLFromJS = u }
+                        self.parent.tab.webView?.evaluateJavaScript(proceedJS, completionHandler: nil)
+                    }))
+                    if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                       let root = scene.keyWindow?.rootViewController {
+                        root.present(alert, animated: true, completion: nil)
+                    } else if let root = UIApplication.shared.windows.first?.rootViewController {
+                        root.present(alert, animated: true, completion: nil)
+                    }
                 default:
                     break
                 }
@@ -497,22 +597,66 @@ struct WebViewRepresentable: UIViewRepresentable {
                 return
             }
 
-            // トグルが無効、もしくはユーザー操作以外なら許可
-            let confirmOn = TabManager.shared.confirmNavigation
-            let isUserGesture = navigationAction.navigationType != .other
-            guard confirmOn, isUserGesture else {
+            // 設定がOFFならそのまま許可
+            guard TabManager.shared.confirmNavigation else {
                 decisionHandler(.allow)
                 return
             }
 
-            // 同一URLへの再読み込み等はスキップ
-            if let current = webView.url, let reqURL = navigationAction.request.url, current == reqURL {
+            // メインフレーム以外は対象外（iframeなど）
+            let isMainFrame = navigationAction.targetFrame?.isMainFrame ?? true
+            guard isMainFrame else {
                 decisionHandler(.allow)
                 return
             }
 
-            // 確認アラートを表示
-            let target = navigationAction.request.url?.absoluteString ?? "このページ"
+            guard let reqURL = navigationAction.request.url else {
+                decisionHandler(.allow)
+                return
+            }
+
+            // http/https 以外（about:, data:, blob:, file: 等）は対象外
+            let scheme = (reqURL.scheme ?? "").lowercased()
+            guard scheme == "http" || scheme == "https" else {
+                decisionHandler(.allow)
+                return
+            }
+
+            // 同一ドキュメント内の移動（#アンカーなど）は対象外
+            if let current = webView.url {
+                let sameDoc = current.scheme?.lowercased() == reqURL.scheme?.lowercased()
+                    && current.host == reqURL.host
+                    && current.port == reqURL.port
+                    && current.path == reqURL.path
+                    && current.query == reqURL.query
+                if sameDoc {
+                    decisionHandler(.allow)
+                    return
+                }
+            }
+
+            // 検索エンジン発や同一ドメイン内は確認なし
+            let fromHost = webView.url?.host
+            if !self.needsConfirm(current: webView.url, to: reqURL, fromHost: fromHost) {
+                decisionHandler(.allow)
+                return
+            }
+
+            // JS承認済みURLなら自動許可（ダブルダイアログ回避）
+            if let approved = approvedURLFromJS {
+                if approved == reqURL || (
+                    approved.host == reqURL.host &&
+                    approved.path == reqURL.path &&
+                    approved.query == reqURL.query
+                ) {
+                    approvedURLFromJS = nil
+                    decisionHandler(.allow)
+                    return
+                }
+            }
+
+            // 確認アラートを表示（ユーザー操作/JS起因どちらも対象）
+            let target = reqURL.absoluteString
             DispatchQueue.main.async {
                 let alert = UIAlertController(title: "移動しますか？", message: target, preferredStyle: .alert)
                 alert.addAction(UIAlertAction(title: "キャンセル", style: .cancel, handler: { _ in
@@ -564,6 +708,10 @@ struct WebViewRepresentable: UIViewRepresentable {
                 if TabManager.shared.isMutedGlobal {
                     webView.evaluateJavaScript(WebViewRepresentable.muteJS(true), completionHandler: nil)
                 }
+
+                // JS 側へ確認トグル状態を伝搬
+                let on = TabManager.shared.confirmNavigation ? "true" : "false"
+                webView.evaluateJavaScript("window.__confirmNavOn = " + on + ";", completionHandler: nil)
             }
         }
         
