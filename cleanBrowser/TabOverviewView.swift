@@ -43,6 +43,10 @@ struct TabOverviewView: View {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: {
                         tabManager.addNewTab()
+                        // 新しく追加されたタブを開く（念のため明示的に切替）
+                        let newIndex = tabManager.tabs.count - 1
+                        tabManager.switchToTab(at: newIndex)
+                        isPresented = false
                     }) {
                         Image(systemName: "plus")
                             .font(.title2)
