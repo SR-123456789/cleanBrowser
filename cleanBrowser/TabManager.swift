@@ -46,12 +46,24 @@ class TabManager: ObservableObject {
     }
     @Published var activeTab: BrowserTab? = nil
     @Published var showTabOverview: Bool = false
+    // 独自キーボードを使うかどうか（デフォルトOFF）
+    @Published var customKeyboardEnabled: Bool = false {
+        didSet {
+            userDefaults.set(customKeyboardEnabled, forKey: customKeyboardEnabledKey)
+            // 既存のwebViewにフラグを伝搬
+            let js = "window.__useCustomKeyboard = " + (customKeyboardEnabled ? "true" : "false") + ";"
+            for tab in tabs {
+                tab.webView?.evaluateJavaScript(js, completionHandler: nil)
+            }
+        }
+    }
     
     private let userDefaults = UserDefaults.standard
     private let tabsKey = "SavedTabs"
     private let activeTabIndexKey = "ActiveTabIndex"
     private let confirmNavigationKey = "ConfirmNavigationEnabled"
     private let isMutedGlobalKey = "GlobalMuted"
+    private let customKeyboardEnabledKey = "CustomKeyboardEnabled"
     
     private init() {
         loadTabs()
@@ -63,6 +75,10 @@ class TabManager: ObservableObject {
             self.confirmNavigation = userDefaults.bool(forKey: confirmNavigationKey)
         }
         self.isMutedGlobal = userDefaults.bool(forKey: isMutedGlobalKey)
+        // customKeyboard の読み込み（保存済みがあれば使用、なければデフォルト true）
+        if userDefaults.object(forKey: customKeyboardEnabledKey) != nil {
+            self.customKeyboardEnabled = userDefaults.bool(forKey: customKeyboardEnabledKey)
+        }
     }
     
     func addNewTab(url: String = "https://www.google.com") {

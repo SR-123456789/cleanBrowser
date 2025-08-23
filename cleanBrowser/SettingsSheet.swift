@@ -29,6 +29,16 @@ struct SettingsSheet: View {
                             .help("新しいURLへ移動する前に確認アラートを表示します")
                     }
                 }
+                Section(header: Text("キーボード")) {
+                    HStack {
+                        Toggle(isOn: $tabManager.customKeyboardEnabled) {
+                            Text("独自キーボードを有効にする")
+                        }
+                        Image(systemName: "questionmark.circle")
+                            .foregroundColor(.secondary)
+                            .help("サイトの入力時に独自のキーボードを使用します")
+                    }
+                }
             }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

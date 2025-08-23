@@ -61,8 +61,8 @@ struct BrowserView: View {
             
 
             
-            // カスタムキーボード
-            if isKeyboardVisible {
+            // カスタムキーボード（設定で無効なら表示しない）
+            if isKeyboardVisible && tabManager.customKeyboardEnabled {
                 CustomKeyboard(
                     webView: tabManager.activeTab?.webView,
                     isKeyboardVisible: $isKeyboardVisible
@@ -81,10 +81,13 @@ struct BrowserView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button("キーボード") {
+                    // 設定で無効ならトグルしない
+                    guard tabManager.customKeyboardEnabled else { return }
                     withAnimation(.easeInOut(duration: 0.25)) {
                         isKeyboardVisible.toggle()
                     }
                 }
+                .disabled(!tabManager.customKeyboardEnabled)
             }
             
             ToolbarItem(placement: .navigationBarLeading) {
@@ -370,20 +373,33 @@ struct WebViewRepresentable: UIViewRepresentable {
                 (function() {
                     let focusedElement = null;
 
+                    // default to false if not set yet so behavior matches app default
+                    if (typeof window.__useCustomKeyboard === 'undefined') { window.__useCustomKeyboard = false; }
+
                     document.addEventListener('focusin', function(e) {
-                        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                        try {
+                            if (!(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
                             focusedElement = e.target;
-                            e.target.setAttribute('readonly', 'readonly');
-                            e.target.setAttribute('inputmode', 'none');
-                            e.target.style.caretColor = 'transparent';
+                            if (window.__useCustomKeyboard) {
+                                e.target.setAttribute('readonly', 'readonly');
+                                e.target.setAttribute('inputmode', 'none');
+                                e.target.style.caretColor = 'transparent';
+                            } else {
+                                // ensure default keyboard allowed
+                                e.target.removeAttribute('readonly');
+                                e.target.removeAttribute('inputmode');
+                                e.target.style.caretColor = '';
+                            }
                             window.webkit.messageHandlers.inputFocused.postMessage('focused');
-                        }
+                        } catch (ex) {}
                     });
 
                     document.addEventListener('focusout', function(e) {
-                        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-                            window.webkit.messageHandlers.inputBlurred.postMessage('blurred');
-                        }
+                        try {
+                            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                                window.webkit.messageHandlers.inputBlurred.postMessage('blurred');
+                            }
+                        } catch (ex) {}
                     });
 
                     window.customInsertText = function(text) {
@@ -712,6 +728,14 @@ struct WebViewRepresentable: UIViewRepresentable {
                 // JS 側へ確認トグル状態を伝搬
                 let on = TabManager.shared.confirmNavigation ? "true" : "false"
                 webView.evaluateJavaScript("window.__confirmNavOn = " + on + ";", completionHandler: nil)
+                // カスタムキーボードの使用フラグを伝搬
+                let useCustom = TabManager.shared.customKeyboardEnabled ? "true" : "false"
+                webView.evaluateJavaScript("window.__useCustomKeyboard = " + useCustom + ";", completionHandler: nil)
+                if !TabManager.shared.customKeyboardEnabled {
+                    // フラグを切った場合はreadonly属性を外してフォーカスを復帰させ、ネイティブキーボードが出るようにする
+                    let restoreJS = "(function(){ try{ var el = document.activeElement; if(el && (el.tagName==='INPUT' || el.tagName==='TEXTAREA')){ el.removeAttribute('readonly'); el.removeAttribute('inputmode'); el.style.caretColor=''; el.focus(); } }catch(e){} })();"
+                    webView.evaluateJavaScript(restoreJS, completionHandler: nil)
+                }
             }
         }
         
