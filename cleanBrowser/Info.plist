@@ -8,5 +8,7 @@
 	<string>ca-app-pub-7782777506427620~5964742075</string>
 	<key>NSUserTrackingUsageDescription</key>
 	<string>このアプリでは、広告を最適化してより良い体験を提供するために、他社のアプリやWebサイトでのアクティビティを基にした広告配信を行います。</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>足音や話し声などの環境音を検知するためにマイクを使用します。</string>
 </dict>
 </plist>
