@@ -6,9 +6,5 @@
 	<string>$(BROWSER_FOOT_ADBAR_ID)</string>
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-7782777506427620~5964742075</string>
-	<key>NSUserTrackingUsageDescription</key>
-	<string>このアプリでは、広告を最適化してより良い体験を提供するために、他社のアプリやWebサイトでのアクティビティを基にした広告配信を行います。</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>イヤホンで集中しているときでも、足音がしたり近くで人が話したらお知らせします。録音や保存は行いません。</string>
 </dict>
 </plist>
