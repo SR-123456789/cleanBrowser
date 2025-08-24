@@ -9,6 +9,6 @@
 	<key>NSUserTrackingUsageDescription</key>
 	<string>このアプリでは、広告を最適化してより良い体験を提供するために、他社のアプリやWebサイトでのアクティビティを基にした広告配信を行います。</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>足音や話し声などの環境音を検知するためにマイクを使用します。</string>
+	<string>イヤホンで集中しているときでも、足音がしたり近くで人が話したらお知らせします。録音や保存は行いません。</string>
 </dict>
 </plist>

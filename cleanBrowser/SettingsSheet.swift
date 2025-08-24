@@ -39,7 +39,7 @@ struct SettingsSheet: View {
                             .help("サイトの入力時に独自のキーボードを使用します")
                     }
                 }
-                Section(header: Text("音検知")) {
+                Section(header: Text("足音検知")) {
                     HStack {
                         Toggle(isOn: $vm.soundDetectionEnabled) {
                             Text("足音検知を有効にする")
@@ -47,6 +47,22 @@ struct SettingsSheet: View {
                         Image(systemName: "questionmark.circle")
                             .foregroundColor(.secondary)
                             .help("足音や話し声を検知したらアラートで知らせます")
+                    }
+                    // dB閾値のスライダー
+                    VStack(alignment: .leading) {
+                        HStack {
+                            Text("検知閾値 (dB)")
+                            Spacer()
+                            VStack(alignment: .trailing) {
+                                Text(String(format: "%d dB", Int(vm.dbThreshold)))
+                                    .foregroundColor(.secondary)
+                                Text(vm.liveDb != nil ? String(format: "現在: %.1f dB", vm.liveDb!) : "現在: -")
+                                    .font(.footnote)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        Slider(value: Binding(get: { Double(vm.dbThreshold) }, set: { vm.dbThreshold = Float($0) }), in: Double(-60)...Double(-10), step: 1)
+                            .disabled(!vm.soundDetectionEnabled)
                     }
                 }
             }
