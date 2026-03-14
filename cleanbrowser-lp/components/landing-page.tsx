@@ -26,9 +26,8 @@ import IphoneMock from "./iphone-mock"
 import { FadeUp } from "./motion-pieces"
 
 // ブランド名（将来名称変更があってもここだけ直せば済むように）
-const BRAND = "NoPeek"
+const BRAND = "av-brower"
 // App Store 配信URL（後で他コンポーネントでも使えるよう定数化）
-const APP_STORE_URL = "https://apps.apple.com/us/app/nopeek-%E6%9C%80%E5%BC%B7%E3%81%AE%E3%83%97%E3%83%A9%E3%82%A4%E3%83%99%E3%83%BC%E3%83%88%E3%83%96%E3%83%A9%E3%82%A6%E3%82%B6/id6749825483" as const
 
 type Props = {
   fontClassName?: string
@@ -39,7 +38,6 @@ const navItems = [
   { href: "#how", label: "使い方" },
   { href: "#compare", label: "比較" },
   { href: "#faq", label: "FAQ" },
-  { href: "#download", label: "ダウンロード" },
 ]
 
 export default function LandingPage({ fontClassName = "" }: Props) {
@@ -74,18 +72,6 @@ export default function LandingPage({ fontClassName = "" }: Props) {
                 </FadeUp>
 
                 <FadeUp as="div" className="mt-8 flex flex-wrap gap-3" delay={0.15}>
-                  <RainbowBorderButton asChild>
-                    <a
-                      href={APP_STORE_URL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      data-cta="download-app-store-hero"
-                      aria-label={`${BRAND} をApp Storeで開く（新しいタブ）`}
-                    >
-                      <Lock className="mr-2 h-4 w-4" aria-hidden="true" />
-                      {"今すぐはじめる"}
-                    </a>
-                  </RainbowBorderButton>
                   <Button asChild variant="ghost" className="rounded-2xl border border-gray-200 hover:bg-gray-50">
                     <a href="#benefits" data-cta="learn" aria-label="詳しく見るへ移動">
                       {"詳しく見る"}
@@ -279,18 +265,6 @@ export default function LandingPage({ fontClassName = "" }: Props) {
                 </h3>
         <p className="mt-3 text-gray-600">{`履歴の便利さも、見せない安心も。${BRAND}で両立しよう。`}</p>
                 <div className="mt-8 flex items-center justify-center gap-3">
-                  <RainbowBorderButton asChild>
-                    <a
-                      href={APP_STORE_URL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      data-cta="download-app-store-final"
-                      aria-label={`${BRAND} をApp Storeで開く（新しいタブ）`}
-                    >
-                      <Lock className="mr-2 h-4 w-4" aria-hidden="true" />
-                      {"今すぐはじめる"}
-                    </a>
-                  </RainbowBorderButton>
                   <Button variant="outline" className="rounded-2xl bg-transparent">
                     {"リリース通知を受け取る"}
                   </Button>
@@ -326,17 +300,6 @@ function Header() {
         </nav>
 
         <div className="hidden md:block">
-          <RainbowBorderButton asChild>
-            <a
-              href={APP_STORE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              data-cta="download-app-store-header"
-              aria-label={`${BRAND} をApp Storeで開く（新しいタブ）`}
-            >
-              {"今すぐはじめる"}
-            </a>
-          </RainbowBorderButton>
         </div>
       </div>
     </header>
