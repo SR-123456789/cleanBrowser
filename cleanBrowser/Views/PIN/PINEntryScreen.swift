@@ -6,6 +6,7 @@ struct PINEntryScreen: View {
     var body: some View {
         PINPadView(
             title: "PINを入力してください",
+            message: nil,
             enteredDigits: viewModel.pinInput.count,
             errorMessage: viewModel.errorMessage,
             style: .regular,

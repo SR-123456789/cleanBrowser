@@ -31,9 +31,22 @@ final class PINSetupViewModel: ObservableObject {
 
     var currentTitle: String {
         switch currentStep {
-        case .currentPIN: return "現在のPINを入力してください"
-        case .newPIN: return mode == .initial ? "PIN設定" : "新しいPINを入力してください"
-        case .confirmPIN: return "もう一度入力"
+        case .currentPIN: return "PINを確認"
+        case .newPIN: return mode == .initial ? "PINを設定" : "新しいPINを設定"
+        case .confirmPIN: return "確認用PIN"
+        }
+    }
+
+    var currentMessage: String {
+        switch currentStep {
+        case .currentPIN:
+            return "現在の4桁PINを入力してください"
+        case .newPIN:
+            return mode == .initial
+                ? "アプリ起動時に使う4桁のPINを入力してください"
+                : "新しい4桁PINを入力してください"
+        case .confirmPIN:
+            return "確認のため、同じ4桁PINをもう一度入力してください"
         }
     }
 

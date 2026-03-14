@@ -13,6 +13,7 @@ struct InitialPINSetupView: View {
         VStack {
             PINPadView(
                 title: viewModel.currentTitle,
+                message: viewModel.currentMessage,
                 enteredDigits: viewModel.currentDigitCount,
                 errorMessage: viewModel.errorMessage,
                 style: .compact,

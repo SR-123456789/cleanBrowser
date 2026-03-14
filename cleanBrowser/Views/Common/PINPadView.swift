@@ -52,6 +52,7 @@ struct PINPadView: View {
     }
 
     let title: String
+    let message: String?
     let enteredDigits: Int
     let errorMessage: String?
     let style: Style
@@ -64,6 +65,16 @@ struct PINPadView: View {
 
             Text(title)
                 .font(style.titleFont)
+                .foregroundColor(.white)
+                .multilineTextAlignment(.center)
+
+            if let message {
+                Text(message)
+                    .font(.subheadline)
+                    .foregroundColor(.white.opacity(0.75))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 20)
+            }
 
             HStack(spacing: 20) {
                 ForEach(0..<4, id: \.self) { index in

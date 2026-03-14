@@ -12,6 +12,7 @@ struct PINSettingsView: View {
         NavigationView {
             PINPadView(
                 title: viewModel.currentTitle,
+                message: viewModel.currentMessage,
                 enteredDigits: viewModel.currentDigitCount,
                 errorMessage: viewModel.errorMessage,
                 style: .regular,
@@ -19,11 +20,11 @@ struct PINSettingsView: View {
                 onDeleteTapped: viewModel.deleteLastDigit
             )
             .background(Color.black)
-            .navigationTitle("Change PIN")
+            .navigationTitle("PIN再設定")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
+                    Button("閉じる") {
                         dismiss()
                     }
                     .foregroundColor(.white)
