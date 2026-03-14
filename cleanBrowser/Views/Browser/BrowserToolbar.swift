@@ -9,6 +9,7 @@ struct BrowserToolbar: View {
     let tabCount: Int
     let onGoBack: () -> Void
     let onGoForward: () -> Void
+    let onBeginAddressEditing: () -> Void
     let onSubmitAddress: (String) -> Void
     let onToggleMute: () -> Void
     let onShowSettings: () -> Void
@@ -18,12 +19,14 @@ struct BrowserToolbar: View {
     @State private var isEditingAddress = false
 
     private enum UI {
-        static let buttonSize: CGFloat = 36
-        static let iconSize: CGFloat = 16
-        static let hSpacing: CGFloat = 12
-        static let toolbarHPadding: CGFloat = 12
-        static let toolbarVPadding: CGFloat = 8
-        static let addressCorner: CGFloat = 12
+        static let buttonSize: CGFloat = 30
+        static let iconSize: CGFloat = 14
+        static let hSpacing: CGFloat = 10
+        static let toolbarHPadding: CGFloat = 10
+        static let toolbarVPadding: CGFloat = 4
+        static let addressCorner: CGFloat = 9
+        static let addressContentHeight: CGFloat = 18
+        static let addressVerticalPadding: CGFloat = 6
     }
     
     var body: some View {
@@ -55,35 +58,47 @@ struct BrowserToolbar: View {
                     .accessibilityLabel("Forward")
                 }
 
-                HStack(spacing: 8) {
+                HStack(spacing: 6) {
                     Image(systemName: currentURL.hasPrefix("https://") ? "lock.fill" : "lock.open")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundColor(currentURL.hasPrefix("https://") ? .green : .orange)
 
                     if isEditingAddress {
-                        URLTextField(text: $addressText, isFirstResponder: $isEditingAddress, placeholder: "Enter URL or search", onCommit: { submittedText in
-                            onSubmitAddress(submittedText)
-                            isEditingAddress = false
-                        })
+                        URLTextField(
+                            text: $addressText,
+                            isFirstResponder: $isEditingAddress,
+                            placeholder: "Enter URL or search",
+                            onBeginEditing: onBeginAddressEditing,
+                            onCommit: { submittedText in
+                                onSubmitAddress(submittedText)
+                                isEditingAddress = false
+                            }
+                        )
                         .onAppear { addressText = currentURL }
+                        .frame(maxWidth: .infinity, minHeight: UI.addressContentHeight, maxHeight: UI.addressContentHeight, alignment: .leading)
                     } else {
                         HStack {
                             Text(BrowserURLResolver.displayText(for: currentURL))
-                                .font(.system(size: 14, weight: .medium))
+                                .font(.system(size: 13, weight: .medium))
                                 .foregroundColor(.primary)
                                 .lineLimit(1)
                                 .truncationMode(.middle)
                             Spacer()
                             Image(systemName: "arrow.clockwise")
-                                .font(.system(size: 12, weight: .medium))
+                                .font(.system(size: 11, weight: .medium))
                                 .foregroundColor(.secondary)
                         }
                         .contentShape(Rectangle())
-                        .onTapGesture { isEditingAddress = true }
+                        .onTapGesture {
+                            onBeginAddressEditing()
+                            isEditingAddress = true
+                        }
+                        .frame(maxWidth: .infinity, minHeight: UI.addressContentHeight, maxHeight: UI.addressContentHeight, alignment: .leading)
                     }
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 10)
+                .padding(.vertical, UI.addressVerticalPadding)
                 .background(Color(.secondarySystemBackground))
                 .cornerRadius(UI.addressCorner)
 

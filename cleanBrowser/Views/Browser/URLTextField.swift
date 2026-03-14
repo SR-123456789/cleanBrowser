@@ -12,21 +12,24 @@ struct URLTextField: UIViewRepresentable {
     @Binding var text: String
     @Binding var isFirstResponder: Bool
     var placeholder: String = ""
+    var onBeginEditing: () -> Void = {}
     var onCommit: (String) -> Void
 
     func makeUIView(context: Context) -> UITextField {
-        let tf = UITextField(frame: .zero)
+        let tf = CompactURLTextField(frame: .zero)
         tf.borderStyle = .none
         tf.font = UIFont.systemFont(ofSize: 14, weight: .medium)
         tf.placeholder = placeholder
         // 長いURLでズームのような挙動が起きることがあるため、フォントの自動縮小で収める
         tf.adjustsFontSizeToFitWidth = true
         tf.minimumFontSize = 10
+        tf.adjustsFontForContentSizeCategory = false
         tf.contentVerticalAlignment = .center
         tf.keyboardType = .URL
         tf.autocapitalizationType = .none
         tf.autocorrectionType = .no
         tf.returnKeyType = .go
+        tf.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         tf.delegate = context.coordinator
         tf.addTarget(context.coordinator, action: #selector(Coordinator.editingChanged(_:)), for: .editingChanged)
         return tf
@@ -64,6 +67,7 @@ struct URLTextField: UIViewRepresentable {
         }
 
         func textFieldDidBeginEditing(_ textField: UITextField) {
+            parent.onBeginEditing()
             parent.isFirstResponder = true
             // 開始時に全選択
             DispatchQueue.main.async {
@@ -74,5 +78,23 @@ struct URLTextField: UIViewRepresentable {
         func textFieldDidEndEditing(_ textField: UITextField) {
             parent.isFirstResponder = false
         }
+    }
+}
+
+private final class CompactURLTextField: UITextField {
+    override var intrinsicContentSize: CGSize {
+        CGSize(width: UIView.noIntrinsicMetric, height: 20)
+    }
+
+    override func textRect(forBounds bounds: CGRect) -> CGRect {
+        bounds
+    }
+
+    override func editingRect(forBounds bounds: CGRect) -> CGRect {
+        bounds
+    }
+
+    override func placeholderRect(forBounds bounds: CGRect) -> CGRect {
+        bounds
     }
 }

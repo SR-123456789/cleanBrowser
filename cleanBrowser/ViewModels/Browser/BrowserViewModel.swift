@@ -74,6 +74,11 @@ final class BrowserViewModel: ObservableObject {
         }
     }
 
+    func beginAddressEditing() {
+        isKeyboardVisible = false
+        activeTab?.webView?.evaluateJavaScript(WebViewJS.blurActiveElementScript, completionHandler: nil)
+    }
+
     func navigate(to rawInput: String) {
         guard let activeTab, let destinationURL = BrowserURLResolver.resolve(rawInput) else { return }
         activeTab.url = destinationURL.absoluteString

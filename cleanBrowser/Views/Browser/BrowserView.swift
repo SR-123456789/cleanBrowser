@@ -30,6 +30,7 @@ struct BrowserView: View {
                         tabCount: viewModel.tabCount,
                         onGoBack: viewModel.goBack,
                         onGoForward: viewModel.goForward,
+                        onBeginAddressEditing: viewModel.beginAddressEditing,
                         onSubmitAddress: viewModel.navigate,
                         onToggleMute: viewModel.toggleMute,
                         onShowSettings: { viewModel.showSettingsSheet = true },

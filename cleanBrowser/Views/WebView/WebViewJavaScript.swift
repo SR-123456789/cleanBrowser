@@ -287,4 +287,8 @@ enum WebViewJS {
     static let restoreNativeKeyboardScript: String = """
         (function(){ try{ var el = document.activeElement; if(el && (el.tagName==='INPUT' || el.tagName==='TEXTAREA')){ el.removeAttribute('readonly'); el.removeAttribute('inputmode'); el.style.caretColor=''; el.focus(); } }catch(e){} })();
     """
+
+    static let blurActiveElementScript: String = """
+        (function(){ try{ var el = document.activeElement; if(el && typeof el.blur === 'function'){ el.blur(); } }catch(e){} })();
+    """
 }
