@@ -10,7 +10,9 @@ final class ContentViewModel: ObservableObject {
     @Published var isPrivacyShieldVisible = false
 
     private let pinService: any PINManaging
-    private var hasBecomeActiveOnce = false
+    private var shouldLockOnNextActive = false
+    private var pendingInactiveShieldWorkItem: DispatchWorkItem?
+    private let inactiveShieldDelay: TimeInterval = 0.35
 
     init(pinService: any PINManaging) {
         self.pinService = pinService
@@ -61,15 +63,36 @@ final class ContentViewModel: ObservableObject {
     func handleScenePhase(_ scenePhase: ScenePhase) {
         switch scenePhase {
         case .active:
+            cancelPendingInactiveShield()
             isPrivacyShieldVisible = false
-            if hasBecomeActiveOnce && pinService.hasPINSet {
+            if shouldLockOnNextActive && pinService.hasPINSet {
                 resetToPIN()
             }
-            hasBecomeActiveOnce = true
-        case .background, .inactive:
+            shouldLockOnNextActive = false
+        case .background:
+            cancelPendingInactiveShield()
             isPrivacyShieldVisible = true
+            shouldLockOnNextActive = true
+        case .inactive:
+            scheduleInactiveShield()
         @unknown default:
             break
         }
+    }
+
+    private func scheduleInactiveShield() {
+        cancelPendingInactiveShield()
+
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.isPrivacyShieldVisible = true
+        }
+
+        pendingInactiveShieldWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + inactiveShieldDelay, execute: workItem)
+    }
+
+    private func cancelPendingInactiveShield() {
+        pendingInactiveShieldWorkItem?.cancel()
+        pendingInactiveShieldWorkItem = nil
     }
 }
