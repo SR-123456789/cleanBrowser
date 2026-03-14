@@ -91,7 +91,16 @@ class TabManager: ObservableObject {
         
     func closeTab(at index: Int) {
         guard index < tabs.count && tabs.count > 1 else { return }
-        
+        // Cleanup webView resources for the tab being closed
+        if let webView = tabs[index].webView {
+            let uc = webView.configuration.userContentController
+            uc.removeScriptMessageHandler(forName: "inputFocused")
+            uc.removeScriptMessageHandler(forName: "inputBlurred")
+            uc.removeScriptMessageHandler(forName: "confirmNav")
+            webView.navigationDelegate = nil
+            webView.stopLoading()
+        }
+        tabs[index].webView = nil
         tabs.remove(at: index)
         
         if activeTabIndex >= tabs.count {

@@ -520,6 +520,18 @@ struct WebViewRepresentable: UIViewRepresentable {
     }
     
     func updateUIView(_ uiView: WKWebView, context: Context) {}
+
+    static func dismantleUIView(_ uiView: WKWebView, coordinator: Coordinator) {
+        // Ensure script message handlers are removed to break strong references to coordinator
+        let uc = uiView.configuration.userContentController
+        uc.removeScriptMessageHandler(forName: "inputFocused")
+        uc.removeScriptMessageHandler(forName: "inputBlurred")
+        uc.removeScriptMessageHandler(forName: "confirmNav")
+        // Break delegate cycles
+        uiView.navigationDelegate = nil
+        // Stop any loading
+        uiView.stopLoading()
+    }
     
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
