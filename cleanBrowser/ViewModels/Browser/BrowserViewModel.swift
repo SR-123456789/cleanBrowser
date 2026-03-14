@@ -54,6 +54,10 @@ final class BrowserViewModel: ObservableObject {
         browserStore.isMutedGlobal
     }
 
+    var isModalPresented: Bool {
+        showPINSettings || showSettingsSheet || showTabOverview
+    }
+
     func setKeyboardVisible(_ isVisible: Bool) {
         guard browserStore.customKeyboardEnabled else {
             isKeyboardVisible = false

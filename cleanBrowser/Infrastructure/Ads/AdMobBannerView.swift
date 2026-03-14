@@ -9,31 +9,13 @@ import SwiftUI
 import UIKit
 import GoogleMobileAds
 
-// このファイル内だけで使うヘルパー
-private enum AdsConfig {
-    static func info(_ key: String) -> String {
-        Bundle.main.object(forInfoDictionaryKey: key) as? String ?? ""
-    }
-    static var footerBanner: String { info("BrowserFootAdBarId") }
-    // Google のテスト用バナー広告ユニットID
-    
-    //テスト
-    static let testBannerUnitId = "ca-app-pub-3940256099942544/2934735716"
-    
-    
-    //本番
-//    static let testBannerUnitId = "ca-app-pub-7782777506427620/9898233758"
-
-}
-
 struct AdMobBannerView: UIViewRepresentable {
     let adUnitID: String
     @EnvironmentObject var attManager: ATTManager
     
     // 既定値：Info.plist の BrowserFootAdBarId（なければテスト用バナーID）
     init(adUnitID: String = {
-        let v = AdsConfig.footerBanner.trimmingCharacters(in: .whitespacesAndNewlines)
-        return v.isEmpty ? AdsConfig.testBannerUnitId : v
+        AdsConfiguration.footerBannerUnitID
     }()) {
         self.adUnitID = adUnitID
     }
