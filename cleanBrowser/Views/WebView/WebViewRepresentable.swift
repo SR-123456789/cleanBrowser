@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 @preconcurrency import WebKit
 
 struct WebViewRepresentable: UIViewRepresentable {
@@ -87,7 +88,7 @@ struct WebViewRepresentable: UIViewRepresentable {
         uiView.stopLoading()
     }
 
-    final class Coordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
+    final class Coordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate {
         private var tab: BrowserTab
         private var browserStore: BrowserStore
         private let confirmationPresenter: any NavigationConfirmationPresenting
@@ -120,6 +121,7 @@ struct WebViewRepresentable: UIViewRepresentable {
 
         func attach(to webView: WKWebView) {
             webView.navigationDelegate = self
+            webView.uiDelegate = self
             let userContentController = webView.configuration.userContentController
             userContentController.removeScriptMessageHandler(forName: "inputFocused")
             userContentController.removeScriptMessageHandler(forName: "inputBlurred")
@@ -150,6 +152,7 @@ struct WebViewRepresentable: UIViewRepresentable {
             userContentController.removeScriptMessageHandler(forName: "inputBlurred")
             userContentController.removeScriptMessageHandler(forName: "confirmNav")
             webView.navigationDelegate = nil
+            webView.uiDelegate = nil
         }
 
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
@@ -265,6 +268,61 @@ struct WebViewRepresentable: UIViewRepresentable {
             DispatchQueue.main.async {
                 self.tab.isLoading = false
             }
+        }
+
+        @available(iOS 13.0, *)
+        func webView(
+            _ webView: WKWebView,
+            contextMenuConfigurationForElement elementInfo: WKContextMenuElementInfo,
+            completionHandler: @escaping (UIContextMenuConfiguration?) -> Void
+        ) {
+            guard let linkURL = elementInfo.linkURL else {
+                completionHandler(nil)
+                return
+            }
+
+            let configuration = UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { suggestedActions in
+                let openLink = UIAction(
+                    title: "リンクを開く",
+                    image: UIImage(systemName: "safari")
+                ) { _ in
+                    webView.load(URLRequest(url: linkURL))
+                }
+
+                let openInNewTab = UIAction(
+                    title: "別タブで開く",
+                    image: UIImage(systemName: "plus.square.on.square")
+                ) { [weak self] _ in
+                    self?.browserStore.addNewTab(url: linkURL.absoluteString)
+                }
+
+                let copyLink = UIAction(
+                    title: "リンクをコピー",
+                    image: UIImage(systemName: "doc.on.doc")
+                ) { _ in
+                    UIPasteboard.general.string = linkURL.absoluteString
+                }
+
+                return UIMenu(children: [openLink, openInNewTab, copyLink] + suggestedActions)
+            }
+
+            completionHandler(configuration)
+        }
+
+        func webView(
+            _ webView: WKWebView,
+            createWebViewWith configuration: WKWebViewConfiguration,
+            for navigationAction: WKNavigationAction,
+            windowFeatures: WKWindowFeatures
+        ) -> WKWebView? {
+            guard navigationAction.targetFrame == nil,
+                  let requestURL = navigationAction.request.url
+            else {
+                return nil
+            }
+
+            browserStore.addNewTab(url: requestURL.absoluteString)
+            return nil
         }
 
         private func handleJavaScriptNavigationConfirmation(_ message: WKScriptMessage) {

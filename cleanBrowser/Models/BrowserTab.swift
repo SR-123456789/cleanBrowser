@@ -24,6 +24,7 @@ final class BrowserTab: ObservableObject, Identifiable {
         userContentController.removeScriptMessageHandler(forName: "inputBlurred")
         userContentController.removeScriptMessageHandler(forName: "confirmNav")
         webView.navigationDelegate = nil
+        webView.uiDelegate = nil
         webView.stopLoading()
         self.webView = nil
     }
