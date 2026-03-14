@@ -122,6 +122,8 @@ enum WebViewJS {
                 if (typeof window.__confirmNavOn === 'undefined') {
                     window.__confirmNavOn = false;
                 }
+                var pendingForm = null;
+                var suppressInterception = false;
 
                 function absoluteURL(value) {
                     try {
@@ -152,6 +154,10 @@ enum WebViewJS {
                         return false;
                     }
 
+                    if (suppressInterception) {
+                        return false;
+                    }
+
                     if (isSearchEngineHost(location.host)) {
                         return false;
                     }
@@ -169,6 +175,16 @@ enum WebViewJS {
                     } catch (_) {
                         return false;
                     }
+                }
+
+                function stopEvent(event) {
+                    try { event.preventDefault(); } catch (_) {}
+                    try { event.stopPropagation(); } catch (_) {}
+                    try {
+                        if (typeof event.stopImmediatePropagation === 'function') {
+                            event.stopImmediatePropagation();
+                        }
+                    } catch (_) {}
                 }
 
                 function postConfirmation(payload) {
@@ -209,8 +225,27 @@ enum WebViewJS {
                             return;
                         }
 
-                        event.preventDefault();
+                        stopEvent(event);
                         postConfirmation({ type: 'anchor', url: absolute, from: location.host });
+                    } catch (_) {}
+                }, true);
+
+                document.addEventListener('submit', function(event) {
+                    try {
+                        const form = event.target;
+                        if (!form || form.tagName !== 'FORM') {
+                            return;
+                        }
+
+                        const action = form.getAttribute('action') || location.href;
+                        const absolute = absoluteURL(action);
+                        if (!absolute || !shouldInterceptNavigation(absolute)) {
+                            return;
+                        }
+
+                        pendingForm = form;
+                        stopEvent(event);
+                        postConfirmation({ type: 'form', url: absolute, from: location.host });
                     } catch (_) {}
                 }, true);
 
@@ -242,6 +277,52 @@ enum WebViewJS {
                     return originalReplaceState.apply(this, arguments);
                 };
 
+                const originalFormSubmit = HTMLFormElement.prototype.submit;
+                HTMLFormElement.prototype.submit = function() {
+                    try {
+                        const action = this.getAttribute('action') || location.href;
+                        const absolute = absoluteURL(action);
+                        if (absolute && shouldInterceptNavigation(absolute)) {
+                            pendingForm = this;
+                            if (postConfirmation({ type: 'form', url: absolute, from: location.host })) {
+                                return;
+                            }
+                        }
+                    } catch (_) {}
+
+                    return originalFormSubmit.apply(this, arguments);
+                };
+
+                const locationPrototype = Object.getPrototypeOf(window.location);
+                const originalLocationAssign = locationPrototype.assign;
+                const originalLocationReplace = locationPrototype.replace;
+
+                locationPrototype.assign = function(url) {
+                    try {
+                        const absolute = absoluteURL(url);
+                        if (absolute && shouldInterceptNavigation(absolute)) {
+                            if (postConfirmation({ type: 'location', method: 'assign', url: absolute, from: location.host })) {
+                                return;
+                            }
+                        }
+                    } catch (_) {}
+
+                    return originalLocationAssign.call(this, url);
+                };
+
+                locationPrototype.replace = function(url) {
+                    try {
+                        const absolute = absoluteURL(url);
+                        if (absolute && shouldInterceptNavigation(absolute)) {
+                            if (postConfirmation({ type: 'location', method: 'replace', url: absolute, from: location.host })) {
+                                return;
+                            }
+                        }
+                    } catch (_) {}
+
+                    return originalLocationReplace.call(this, url);
+                };
+
                 window.__proceedNav = function(payload) {
                     try {
                         const type = payload && payload.type;
@@ -251,16 +332,37 @@ enum WebViewJS {
                             return;
                         }
 
+                        suppressInterception = true;
+
                         if (type === 'history') {
                             if (method === 'replace') {
                                 originalReplaceState.call(history, {}, '', url);
                             } else {
                                 originalPushState.call(history, {}, '', url);
                             }
+                        } else if (type === 'form') {
+                            const form = pendingForm;
+                            pendingForm = null;
+                            if (form) {
+                                originalFormSubmit.call(form);
+                            } else {
+                                originalLocationAssign.call(window.location, url);
+                            }
+                        } else if (type === 'location') {
+                            if (method === 'replace') {
+                                originalLocationReplace.call(window.location, url);
+                            } else {
+                                originalLocationAssign.call(window.location, url);
+                            }
                         } else {
-                            location.assign(url);
+                            originalLocationAssign.call(window.location, url);
                         }
                     } catch (_) {}
+                    finally {
+                        setTimeout(function() {
+                            suppressInterception = false;
+                        }, 0);
+                    }
                 };
             } catch (_) {}
         })();
