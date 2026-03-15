@@ -1,0 +1,3 @@
+#include "Config.xcconfig"
+
+BROWSER_INTERSTITIAL_AD_UNIT_ID = ca-app-pub-7782777506427620/2605291341
