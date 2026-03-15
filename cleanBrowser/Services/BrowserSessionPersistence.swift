@@ -1,7 +1,7 @@
 import Foundation
 
-struct BrowserSessionState {
-    struct TabRecord: Codable {
+struct BrowserSessionState: Equatable {
+    struct TabRecord: Codable, Equatable {
         let url: String
         let title: String
     }

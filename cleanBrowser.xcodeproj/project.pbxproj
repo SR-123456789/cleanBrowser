@@ -10,8 +10,19 @@
 		4ADC24BA2E4898AE00BB8416 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = 4ADC24B92E4898AE00BB8416 /* GoogleMobileAds */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		9A1E00012F7A00010000000A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4AD131A82E3CD81400778077 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4AD131AF2E3CD81400778077;
+			remoteInfo = cleanBrowser;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		4AD131B02E3CD81400778077 /* cleanBrowser.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = cleanBrowser.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9A1E00012F7A000100000001 /* cleanBrowserTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = cleanBrowserTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -19,6 +30,13 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
+				Tests/Helpers/TestDoubles.swift,
+				Tests/Services/BrowserSessionPersistenceTests.swift,
+				Tests/Services/DailyInterstitialGateStoreTests.swift,
+				Tests/Services/PINServiceTests.swift,
+				Tests/Stores/BrowserStoreTests.swift,
+				Tests/Utilities/BrowserURLResolverTests.swift,
+				Tests/ViewModels/ContentViewModelTests.swift,
 			);
 			target = 4AD131AF2E3CD81400778077 /* cleanBrowser */;
 		};
@@ -33,6 +51,11 @@
 			path = cleanBrowser;
 			sourceTree = "<group>";
 		};
+		9A1E00012F7A000100000002 /* Tests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = cleanBrowser/Tests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -44,6 +67,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		9A1E00012F7A000100000003 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -51,6 +81,7 @@
 			isa = PBXGroup;
 			children = (
 				4AD131B22E3CD81400778077 /* cleanBrowser */,
+				9A1E00012F7A000100000002 /* Tests */,
 				4AD131B12E3CD81400778077 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -59,6 +90,7 @@
 			isa = PBXGroup;
 			children = (
 				4AD131B02E3CD81400778077 /* cleanBrowser.app */,
+				9A1E00012F7A000100000001 /* cleanBrowserTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -89,6 +121,27 @@
 			productReference = 4AD131B02E3CD81400778077 /* cleanBrowser.app */;
 			productType = "com.apple.product-type.application";
 		};
+		9A1E00012F7A000100000006 /* cleanBrowserTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9A1E00012F7A000100000007 /* Build configuration list for PBXNativeTarget "cleanBrowserTests" */;
+			buildPhases = (
+				9A1E00012F7A000100000005 /* Sources */,
+				9A1E00012F7A000100000003 /* Frameworks */,
+				9A1E00012F7A000100000004 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				9A1E00012F7A00010000000B /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				9A1E00012F7A000100000002 /* Tests */,
+			);
+			name = cleanBrowserTests;
+			productName = cleanBrowserTests;
+			productReference = 9A1E00012F7A000100000001 /* cleanBrowserTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -101,6 +154,10 @@
 				TargetAttributes = {
 					4AD131AF2E3CD81400778077 = {
 						CreatedOnToolsVersion = 16.2;
+					};
+					9A1E00012F7A000100000006 = {
+						CreatedOnToolsVersion = 16.2;
+						TestTargetID = 4AD131AF2E3CD81400778077;
 					};
 				};
 			};
@@ -122,12 +179,20 @@
 			projectRoot = "";
 			targets = (
 				4AD131AF2E3CD81400778077 /* cleanBrowser */,
+				9A1E00012F7A000100000006 /* cleanBrowserTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		4AD131AE2E3CD81400778077 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9A1E00012F7A000100000004 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -144,7 +209,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		9A1E00012F7A000100000005 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		9A1E00012F7A00010000000B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4AD131AF2E3CD81400778077 /* cleanBrowser */;
+			targetProxy = 9A1E00012F7A00010000000A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		4AD131BC2E3CD81700778077 /* Debug */ = {
@@ -332,6 +412,53 @@
 			};
 			name = Release;
 		};
+		9A1E00012F7A000100000008 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D94299A947;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = prepan.cleanBrowserTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/cleanBrowser.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/cleanBrowser";
+				TEST_TARGET_NAME = cleanBrowser;
+			};
+			name = Debug;
+		};
+		9A1E00012F7A000100000009 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D94299A947;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = prepan.cleanBrowserTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/cleanBrowser.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/cleanBrowser";
+				TEST_TARGET_NAME = cleanBrowser;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -349,6 +476,15 @@
 			buildConfigurations = (
 				4AD131BF2E3CD81700778077 /* Debug */,
 				4AD131C02E3CD81700778077 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		9A1E00012F7A000100000007 /* Build configuration list for PBXNativeTarget "cleanBrowserTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9A1E00012F7A000100000008 /* Debug */,
+				9A1E00012F7A000100000009 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

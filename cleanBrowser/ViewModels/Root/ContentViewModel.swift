@@ -12,10 +12,19 @@ final class ContentViewModel: ObservableObject {
     private let pinService: any PINManaging
     private var shouldLockOnNextActive = false
     private var pendingInactiveShieldWorkItem: DispatchWorkItem?
-    private let inactiveShieldDelay: TimeInterval = 0.35
+    private let inactiveShieldDelay: TimeInterval
+    private let scheduleDelayedWork: (TimeInterval, DispatchWorkItem) -> Void
 
-    init(pinService: any PINManaging) {
+    init(
+        pinService: any PINManaging,
+        inactiveShieldDelay: TimeInterval = 0.35,
+        scheduleDelayedWork: @escaping (TimeInterval, DispatchWorkItem) -> Void = { delay, workItem in
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
+        }
+    ) {
         self.pinService = pinService
+        self.inactiveShieldDelay = inactiveShieldDelay
+        self.scheduleDelayedWork = scheduleDelayedWork
     }
 
     var shouldShowInitialSetup: Bool {
@@ -88,7 +97,7 @@ final class ContentViewModel: ObservableObject {
         }
 
         pendingInactiveShieldWorkItem = workItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + inactiveShieldDelay, execute: workItem)
+        scheduleDelayedWork(inactiveShieldDelay, workItem)
     }
 
     private func cancelPendingInactiveShield() {

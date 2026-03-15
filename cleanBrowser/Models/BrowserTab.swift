@@ -5,12 +5,23 @@ import WebKit
 final class BrowserTab: ObservableObject, Identifiable {
     let id = UUID()
     @Published var webView: WKWebView?
-    @Published var title: String
-    @Published var url: String
+    @Published var title: String {
+        didSet {
+            guard title != oldValue else { return }
+            onPersistableStateChange?()
+        }
+    }
+    @Published var url: String {
+        didSet {
+            guard url != oldValue else { return }
+            onPersistableStateChange?()
+        }
+    }
     @Published var canGoBack: Bool = false
     @Published var canGoForward: Bool = false
     @Published var isLoading: Bool = false
     @Published var isMuted: Bool = false
+    var onPersistableStateChange: (() -> Void)?
 
     init(url: String = BrowserURLResolver.defaultHomePage, title: String = "新しいタブ") {
         self.url = url
@@ -26,6 +37,7 @@ final class BrowserTab: ObservableObject, Identifiable {
         webView.navigationDelegate = nil
         webView.uiDelegate = nil
         webView.stopLoading()
+        onPersistableStateChange = nil
         self.webView = nil
     }
 }

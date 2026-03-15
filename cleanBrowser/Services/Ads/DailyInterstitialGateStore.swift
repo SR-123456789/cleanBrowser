@@ -35,14 +35,20 @@ final class UserDefaultsDailyInterstitialGateStore: DailyInterstitialGateStoring
 
     private let defaults: UserDefaults
     private var calendar: Calendar
+    private let nowProvider: () -> Date
 
-    init(defaults: UserDefaults = .standard, calendar: Calendar = .current) {
+    init(
+        defaults: UserDefaults = .standard,
+        calendar: Calendar = .current,
+        nowProvider: @escaping () -> Date = Date.init
+    ) {
         self.defaults = defaults
         self.calendar = calendar
+        self.nowProvider = nowProvider
     }
 
     func currentState() -> DailyInterstitialGateState {
-        state(for: Date())
+        state(for: nowProvider())
     }
 
     func recordTap() -> DailyInterstitialGateState {

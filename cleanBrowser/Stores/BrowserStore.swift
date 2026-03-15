@@ -1,4 +1,3 @@
-import Combine
 import SwiftUI
 import WebKit
 
@@ -35,8 +34,6 @@ final class BrowserStore: ObservableObject {
 
     private let persistence: any BrowserSessionPersisting
     private var isRestoringState = false
-    private var tabStateCancellables = Set<AnyCancellable>()
-
     init(persistence: any BrowserSessionPersisting = UserDefaultsBrowserSessionPersistence()) {
         self.persistence = persistence
 
@@ -156,24 +153,10 @@ final class BrowserStore: ObservableObject {
     }
 
     private func bindTabStateObservers() {
-        tabStateCancellables.removeAll()
-
         for tab in tabs {
-            tab.$url
-                .dropFirst()
-                .removeDuplicates()
-                .sink { [weak self] _ in
-                    self?.persistCurrentSession()
-                }
-                .store(in: &tabStateCancellables)
-
-            tab.$title
-                .dropFirst()
-                .removeDuplicates()
-                .sink { [weak self] _ in
-                    self?.persistCurrentSession()
-                }
-                .store(in: &tabStateCancellables)
+            tab.onPersistableStateChange = { [weak self] in
+                self?.persistCurrentSession()
+            }
         }
     }
 
