@@ -28,6 +28,9 @@ struct ContentView: View {
             viewModel.handleScenePhase(scenePhase)
         }
         .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .background {
+                browserStore.persistCurrentSession()
+            }
             viewModel.handleScenePhase(newPhase)
         }
     }

@@ -35,6 +35,7 @@ final class BrowserStore: ObservableObject {
 
     private let persistence: any BrowserSessionPersisting
     private var isRestoringState = false
+    private var tabStateCancellables = Set<AnyCancellable>()
 
     init(persistence: any BrowserSessionPersisting = UserDefaultsBrowserSessionPersistence()) {
         self.persistence = persistence
@@ -53,11 +54,13 @@ final class BrowserStore: ObservableObject {
 
         restoreActiveTabIndex(from: state.activeTabIndex)
         applyInitialMuteState()
+        bindTabStateObservers()
     }
 
     func addNewTab(url: String = BrowserURLResolver.defaultHomePage) {
         let newTab = BrowserTab(url: url)
         tabs.append(newTab)
+        bindTabStateObservers()
         activeTabIndex = tabs.count - 1
         updateActiveTab()
         persistSession()
@@ -67,6 +70,7 @@ final class BrowserStore: ObservableObject {
         guard tabs.indices.contains(index), tabs.count > 1 else { return }
         tabs[index].teardownWebView()
         tabs.remove(at: index)
+        bindTabStateObservers()
 
         if activeTabIndex >= tabs.count {
             activeTabIndex = tabs.count - 1
@@ -124,6 +128,11 @@ final class BrowserStore: ObservableObject {
         return true
     }
 
+    func persistCurrentSession() {
+        guard !isRestoringState else { return }
+        persistSession()
+    }
+
     private func restoreActiveTabIndex(from storedIndex: Int) {
         isRestoringState = true
         activeTabIndex = min(max(storedIndex, 0), tabs.count - 1)
@@ -144,6 +153,28 @@ final class BrowserStore: ObservableObject {
             customKeyboardEnabled: customKeyboardEnabled
         )
         persistence.save(state)
+    }
+
+    private func bindTabStateObservers() {
+        tabStateCancellables.removeAll()
+
+        for tab in tabs {
+            tab.$url
+                .dropFirst()
+                .removeDuplicates()
+                .sink { [weak self] _ in
+                    self?.persistCurrentSession()
+                }
+                .store(in: &tabStateCancellables)
+
+            tab.$title
+                .dropFirst()
+                .removeDuplicates()
+                .sink { [weak self] _ in
+                    self?.persistCurrentSession()
+                }
+                .store(in: &tabStateCancellables)
+        }
     }
 
     private func propagateCustomKeyboardPreference() {
