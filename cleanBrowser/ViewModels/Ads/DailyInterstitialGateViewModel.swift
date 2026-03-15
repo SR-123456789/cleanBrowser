@@ -97,16 +97,16 @@ final class DailyInterstitialGateViewModel: ObservableObject {
 
     func presentAd() {
         errorMessage = nil
+        isAdPresenting = true
 
         guard adService.presentIfReady() else {
+            isAdPresenting = false
             adService.prepare(canShowPersonalizedAds: canShowPersonalizedAds)
             if !isLoadingAd {
                 errorMessage = "広告を準備しています。読み込み後にもう一度お試しください。"
             }
             return
         }
-
-        isAdPresenting = true
     }
 
     private func sync(with state: DailyInterstitialGateState) {

@@ -57,7 +57,7 @@ struct BrowserView: View {
                 }
             }
             .background {
-                if !dailyInterstitialGateViewModel.isAdPresenting {
+                if !dailyInterstitialGateViewModel.isAdPresenting && !dailyInterstitialGateViewModel.isGatePresented {
                     WindowTapSpyView {
                         guard !viewModel.isModalPresented else { return }
                         dailyInterstitialGateViewModel.recordScreenTap()

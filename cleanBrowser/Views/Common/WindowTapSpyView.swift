@@ -31,6 +31,8 @@ struct WindowTapSpyView: UIViewRepresentable {
         private lazy var tapRecognizer: UITapGestureRecognizer = {
             let recognizer = UITapGestureRecognizer(target: self, action: #selector(handleTap))
             recognizer.cancelsTouchesInView = false
+            recognizer.delaysTouchesBegan = false
+            recognizer.delaysTouchesEnded = false
             recognizer.delegate = self
             return recognizer
         }()
@@ -66,13 +68,16 @@ struct WindowTapSpyView: UIViewRepresentable {
         }
 
         private func gestureHostView(from view: UIView) -> UIView? {
-            var currentView: UIView? = view
+            var currentView = view.superview
 
-            while let superview = currentView?.superview, !(superview is UIWindow) {
-                currentView = superview
+            while let candidate = currentView, !(candidate is UIWindow) {
+                if candidate.bounds.width > 1, candidate.bounds.height > 1 {
+                    return candidate
+                }
+                currentView = candidate.superview
             }
 
-            return currentView
+            return view.superview
         }
     }
 }
