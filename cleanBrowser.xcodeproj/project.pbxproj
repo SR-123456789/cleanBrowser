@@ -41,6 +41,7 @@
 				Tests/Utilities/BrowserURLResolverTests.swift,
 				Tests/ViewModels/DailyInterstitialGateViewModelTests.swift,
 				Tests/ViewModels/ContentViewModelTests.swift,
+				Tests/ViewModels/CustomKeyboardViewModelTests.swift,
 			);
 			target = 4AD131AF2E3CD81400778077 /* cleanBrowser */;
 		};

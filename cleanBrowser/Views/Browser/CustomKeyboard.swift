@@ -126,16 +126,11 @@ struct CustomKeyboard: View {
     private func keyboardGrid(rows: [[String]]) -> some View {
         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
             ForEach(rows.flatMap { $0 }, id: \ .self) { character in
-                Button(action: {
-                    viewModel.handleHiraganaInput(character)
-                }) {
-                    Text(character)
-                        .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(.black)
-                        .frame(maxWidth: .infinity, minHeight: 50)
-                        .background(Color.white)
-                        .cornerRadius(8)
-                        .shadow(radius: 1)
+                JapaneseFlickKey(
+                    character: character,
+                    flickOptions: viewModel.flickOptions(for: character)
+                ) { direction in
+                    viewModel.handleJapaneseInput(character, flickDirection: direction)
                 }
             }
         }

@@ -9,6 +9,13 @@ import SwiftUI
 import WebKit
 
 final class CustomKeyboardViewModel: ObservableObject {
+    enum FlickDirection: CaseIterable {
+        case up
+        case right
+        case down
+        case left
+    }
+
     @Published var currentLayout: KeyboardLayout = .hiragana
     @Published var isShiftPressed = false
     
@@ -23,6 +30,9 @@ final class CustomKeyboardViewModel: ObservableObject {
     @Published var dakutenPressCount: Int = 0
     
     weak var webView: WKWebView?
+
+    private let insertTextHandler: ((String) -> Void)?
+    private let deleteTextHandler: (() -> Void)?
     
     enum KeyboardLayout: CaseIterable {
         case hiragana, katakana, english, numbers
@@ -35,6 +45,14 @@ final class CustomKeyboardViewModel: ObservableObject {
             case .numbers: return "123"
             }
         }
+    }
+
+    init(
+        insertTextHandler: ((String) -> Void)? = nil,
+        deleteTextHandler: (() -> Void)? = nil
+    ) {
+        self.insertTextHandler = insertTextHandler
+        self.deleteTextHandler = deleteTextHandler
     }
     
     // MARK: - キーレイアウトデータ
@@ -119,6 +137,55 @@ final class CustomKeyboardViewModel: ObservableObject {
     ]
     
     // MARK: - 入力ロジック
+
+    func flickOptions(for character: String) -> [FlickDirection: String] {
+        let cycle: [String]?
+        switch currentLayout {
+        case .hiragana:
+            cycle = hiraganaCycles[character]
+        case .katakana:
+            cycle = katakanaCycles[character]
+        case .english, .numbers:
+            cycle = nil
+        }
+
+        guard let cycle, cycle.count > 1 else {
+            return [:]
+        }
+
+        let directions: [FlickDirection]
+        switch cycle.count {
+        case 2:
+            directions = [.left]
+        case 3:
+            directions = [.up, .right]
+        case 4:
+            directions = [.left, .up, .right]
+        default:
+            directions = [.left, .up, .right, .down]
+        }
+        var options: [FlickDirection: String] = [:]
+
+        for (index, direction) in directions.enumerated() where index + 1 < cycle.count {
+            options[direction] = cycle[index + 1]
+        }
+
+        return options
+    }
+
+    func handleJapaneseInput(_ character: String, flickDirection: FlickDirection?) {
+        guard
+            let flickDirection,
+            let outputChar = flickOptions(for: character)[flickDirection]
+        else {
+            handleHiraganaInput(character)
+            return
+        }
+
+        resetCycleInputState()
+        insertText(outputChar)
+        lastOutputChar = outputChar
+    }
     
     func handleHiraganaInput(_ character: String) {
         // 日本語入力モードで「゛」キーが押された場合の濁点・半濁点処理
@@ -213,6 +280,11 @@ final class CustomKeyboardViewModel: ObservableObject {
     }
     
     func insertText(_ text: String) {
+        if let insertTextHandler {
+            insertTextHandler(text)
+            return
+        }
+
         let escapedText = text
             .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "'", with: "\\'")
@@ -232,6 +304,11 @@ final class CustomKeyboardViewModel: ObservableObject {
     }
     
     func deleteLastCharacter() {
+        if let deleteTextHandler {
+            deleteTextHandler()
+            return
+        }
+
         let script = "window.customDeleteText();"
         webView?.evaluateJavaScript(script) { result, error in
             if let error = error {
@@ -246,6 +323,12 @@ final class CustomKeyboardViewModel: ObservableObject {
     
     func insertNewline() {
         insertText("\n")
+    }
+
+    private func resetCycleInputState() {
+        lastPressedKey = nil
+        lastPressedKeyIndex = 0
+        lastKeyPressTime = .distantPast
     }
     
     var mainAreaHeight: CGFloat {
