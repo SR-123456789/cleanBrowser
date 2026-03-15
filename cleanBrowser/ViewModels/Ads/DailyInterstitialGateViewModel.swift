@@ -12,6 +12,7 @@ final class DailyInterstitialGateViewModel: ObservableObject {
 
     private let stateStore: any DailyInterstitialGateStoring
     private let adService: any InterstitialAdServing
+    private let analytics: any AnalyticsTracking
     private var canShowPersonalizedAds = false
     private var hasReachedThresholdToday = false
     private var lastPreparedDayKey: String?
@@ -19,16 +20,27 @@ final class DailyInterstitialGateViewModel: ObservableObject {
     init() {
         self.stateStore = UserDefaultsDailyInterstitialGateStore()
         self.adService = AdMobInterstitialService()
+        self.analytics = NoopAnalyticsManager()
+        bindDependencies()
+        sync(with: stateStore.currentState())
+    }
+
+    init(analytics: any AnalyticsTracking) {
+        self.stateStore = UserDefaultsDailyInterstitialGateStore()
+        self.adService = AdMobInterstitialService()
+        self.analytics = analytics
         bindDependencies()
         sync(with: stateStore.currentState())
     }
 
     init(
         stateStore: any DailyInterstitialGateStoring,
-        adService: any InterstitialAdServing
+        adService: any InterstitialAdServing,
+        analytics: any AnalyticsTracking = NoopAnalyticsManager()
     ) {
         self.stateStore = stateStore
         self.adService = adService
+        self.analytics = analytics
         bindDependencies()
         sync(with: stateStore.currentState())
     }
@@ -167,6 +179,9 @@ final class DailyInterstitialGateViewModel: ObservableObject {
         let newValue = hasReachedThresholdToday && isAdReady && !isAdPresenting
         guard isGatePresented != newValue else { return }
         isGatePresented = newValue
+        if newValue {
+            analytics.trackAdDialogShown()
+        }
     }
 
     private var shouldPreloadAd: Bool {

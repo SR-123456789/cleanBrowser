@@ -7,11 +7,18 @@ struct ContentView: View {
     private let browserStore: BrowserStore
     private let soundDetector: SoundDetector
     private let pinService: any PINManaging
+    private let analyticsManager: any AnalyticsTracking
 
-    init(browserStore: BrowserStore, soundDetector: SoundDetector, pinService: any PINManaging) {
+    init(
+        browserStore: BrowserStore,
+        soundDetector: SoundDetector,
+        pinService: any PINManaging,
+        analyticsManager: any AnalyticsTracking
+    ) {
         self.browserStore = browserStore
         self.soundDetector = soundDetector
         self.pinService = pinService
+        self.analyticsManager = analyticsManager
         _viewModel = StateObject(wrappedValue: ContentViewModel(pinService: pinService))
     }
 
@@ -42,7 +49,12 @@ struct ContentView: View {
                 viewModel.onPINSet()
             }
         } else if viewModel.isUnlocked {
-            BrowserView(browserStore: browserStore, soundDetector: soundDetector, pinService: pinService)
+            BrowserView(
+                browserStore: browserStore,
+                soundDetector: soundDetector,
+                pinService: pinService,
+                analyticsManager: analyticsManager
+            )
                 .ignoresSafeArea(.container, edges: .bottom)
         } else {
             PINEntryScreen(viewModel: viewModel)
@@ -57,6 +69,7 @@ struct ContentView: View {
     ContentView(
         browserStore: BrowserStore(),
         soundDetector: SoundDetector(),
-        pinService: UserDefaultsPINService()
+        pinService: UserDefaultsPINService(),
+        analyticsManager: NoopAnalyticsManager()
     )
 }

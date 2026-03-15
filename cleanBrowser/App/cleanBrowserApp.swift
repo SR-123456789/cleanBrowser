@@ -7,15 +7,19 @@ struct cleanBrowserApp: App {
     @StateObject private var soundDetector: SoundDetector
 
     private let pinService: any PINManaging
+    private let analyticsManager: any AnalyticsTracking
 
     init() {
         let browserStore = BrowserStore()
         let soundDetector = SoundDetector()
         let pinService = UserDefaultsPINService()
+        let analyticsManager = AnalyticsManager()
 
         _browserStore = StateObject(wrappedValue: browserStore)
         _soundDetector = StateObject(wrappedValue: soundDetector)
         self.pinService = pinService
+        self.analyticsManager = analyticsManager
+        analyticsManager.trackAppOpened()
     }
 
     var body: some Scene {
@@ -23,7 +27,8 @@ struct cleanBrowserApp: App {
             ContentView(
                 browserStore: browserStore,
                 soundDetector: soundDetector,
-                pinService: pinService
+                pinService: pinService,
+                analyticsManager: analyticsManager
             )
                 .environmentObject(attManager)
                 .onAppear {

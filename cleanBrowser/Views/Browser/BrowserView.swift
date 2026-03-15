@@ -5,16 +5,24 @@ struct BrowserView: View {
     @StateObject private var viewModel: BrowserViewModel
     @StateObject private var settingsViewModel: SettingsViewModel
     @StateObject private var tabOverviewViewModel: TabOverviewViewModel
-    @StateObject private var dailyInterstitialGateViewModel = DailyInterstitialGateViewModel()
+    @StateObject private var dailyInterstitialGateViewModel: DailyInterstitialGateViewModel
     private let pinService: any PINManaging
 
-    init(browserStore: BrowserStore, soundDetector: SoundDetector, pinService: any PINManaging) {
+    init(
+        browserStore: BrowserStore,
+        soundDetector: SoundDetector,
+        pinService: any PINManaging,
+        analyticsManager: any AnalyticsTracking
+    ) {
         self.pinService = pinService
         _viewModel = StateObject(wrappedValue: BrowserViewModel(browserStore: browserStore))
         _settingsViewModel = StateObject(
             wrappedValue: SettingsViewModel(browserStore: browserStore, soundDetector: soundDetector)
         )
         _tabOverviewViewModel = StateObject(wrappedValue: TabOverviewViewModel(browserStore: browserStore))
+        _dailyInterstitialGateViewModel = StateObject(
+            wrappedValue: DailyInterstitialGateViewModel(analytics: analyticsManager)
+        )
     }
 
     var body: some View {
@@ -119,7 +127,8 @@ struct BrowserView: View {
         BrowserView(
             browserStore: BrowserStore(),
             soundDetector: SoundDetector(),
-            pinService: UserDefaultsPINService()
+            pinService: UserDefaultsPINService(),
+            analyticsManager: NoopAnalyticsManager()
         )
     }
     .environmentObject(ATTManager())

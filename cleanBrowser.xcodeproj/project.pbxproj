@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		4ADC24BA2E4898AE00BB8416 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = 4ADC24B92E4898AE00BB8416 /* GoogleMobileAds */; };
+		9A1E00012F7A00010000000F /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 9A1E00012F7A000100000010 /* PostHog */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -69,6 +70,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				4ADC24BA2E4898AE00BB8416 /* GoogleMobileAds in Frameworks */,
+				9A1E00012F7A00010000000F /* PostHog in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -124,6 +126,7 @@
 			name = cleanBrowser;
 			packageProductDependencies = (
 				4ADC24B92E4898AE00BB8416 /* GoogleMobileAds */,
+				9A1E00012F7A000100000010 /* PostHog */,
 			);
 			productName = cleanBrowser;
 			productReference = 4AD131B02E3CD81400778077 /* cleanBrowser.app */;
@@ -180,6 +183,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				4ADC24B82E4898AE00BB8416 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */,
+				9A1E00012F7A000100000011 /* XCRemoteSwiftPackageReference "posthog-ios" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 4AD131B12E3CD81400778077 /* Products */;
@@ -510,6 +514,14 @@
 				minimumVersion = 12.8.0;
 			};
 		};
+		9A1E00012F7A000100000011 /* XCRemoteSwiftPackageReference "posthog-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/PostHog/posthog-ios";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 3.47.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -517,6 +529,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 4ADC24B82E4898AE00BB8416 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */;
 			productName = GoogleMobileAds;
+		};
+		9A1E00012F7A000100000010 /* PostHog */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9A1E00012F7A000100000011 /* XCRemoteSwiftPackageReference "posthog-ios" */;
+			productName = PostHog;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

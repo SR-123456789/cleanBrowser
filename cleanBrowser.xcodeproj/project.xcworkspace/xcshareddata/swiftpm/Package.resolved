@@ -1,6 +1,24 @@
 {
-  "originHash" : "a0e7c8e02f923b679180e347f7fdac90c95fc27903ff96ecee91f17a7815ce78",
+  "originHash" : "9e34c7696e7b26ccc429de1e75533a90da65036a654d9d2871712eb2739eaee7",
   "pins" : [
+    {
+      "identity" : "plcrashreporter",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/microsoft/plcrashreporter.git",
+      "state" : {
+        "revision" : "0254f941c646b1ed17b243654723d0f071e990d0",
+        "version" : "1.12.2"
+      }
+    },
+    {
+      "identity" : "posthog-ios",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/PostHog/posthog-ios",
+      "state" : {
+        "revision" : "09da1be6a614325a6a464c6d2017a9ac858d1b5a",
+        "version" : "3.47.0"
+      }
+    },
     {
       "identity" : "swift-package-manager-google-mobile-ads",
       "kind" : "remoteSourceControl",

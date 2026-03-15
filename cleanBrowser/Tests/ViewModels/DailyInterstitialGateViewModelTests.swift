@@ -125,6 +125,28 @@ final class DailyInterstitialGateViewModelTests: XCTestCase {
         XCTAssertTrue(sut.isGatePresented)
         XCTAssertEqual(adService.presentIfReadyCallCount, 0)
     }
+
+    func test_gatePresentation_tracksAdDialogShownWhenGateBecomesVisible() {
+        let store = DailyInterstitialGateStoreStub(
+            state: DailyInterstitialGateState(
+                dayKey: "2026-03-15",
+                tapCount: DailyInterstitialGateState.tapThreshold,
+                lastCompletedDayKey: nil
+            )
+        )
+        let adService = InterstitialAdServiceStub()
+        let analytics = AnalyticsTrackerStub()
+        let sut = DailyInterstitialGateViewModel(
+            stateStore: store,
+            adService: adService,
+            analytics: analytics
+        )
+
+        adService.sendState(isReady: true, isLoading: false, errorMessage: nil)
+
+        XCTAssertTrue(sut.isGatePresented)
+        XCTAssertEqual(analytics.adDialogShownCount, 1)
+    }
 }
 
 @MainActor
@@ -179,5 +201,19 @@ private final class InterstitialAdServiceStub: InterstitialAdServing {
                 errorMessage: errorMessage
             )
         )
+    }
+}
+
+@MainActor
+private final class AnalyticsTrackerStub: AnalyticsTracking {
+    private(set) var appOpenedCount = 0
+    private(set) var adDialogShownCount = 0
+
+    func trackAppOpened() {
+        appOpenedCount += 1
+    }
+
+    func trackAdDialogShown() {
+        adDialogShownCount += 1
     }
 }
