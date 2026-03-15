@@ -28,6 +28,42 @@ final class BrowserTab: ObservableObject, Identifiable {
         self.title = title
     }
 
+    func setWebViewIfNeeded(_ webView: WKWebView?) {
+        guard self.webView !== webView else { return }
+        self.webView = webView
+    }
+
+    func setTitleIfNeeded(_ title: String) {
+        guard self.title != title else { return }
+        self.title = title
+    }
+
+    func setURLIfNeeded(_ url: String) {
+        guard self.url != url else { return }
+        self.url = url
+    }
+
+    func setNavigationStateIfNeeded(
+        canGoBack: Bool,
+        canGoForward: Bool,
+        isLoading: Bool
+    ) {
+        if self.canGoBack != canGoBack {
+            self.canGoBack = canGoBack
+        }
+        if self.canGoForward != canGoForward {
+            self.canGoForward = canGoForward
+        }
+        if self.isLoading != isLoading {
+            self.isLoading = isLoading
+        }
+    }
+
+    func setMutedIfNeeded(_ isMuted: Bool) {
+        guard self.isMuted != isMuted else { return }
+        self.isMuted = isMuted
+    }
+
     func teardownWebView() {
         guard let webView else { return }
         let userContentController = webView.configuration.userContentController
@@ -38,6 +74,6 @@ final class BrowserTab: ObservableObject, Identifiable {
         webView.uiDelegate = nil
         webView.stopLoading()
         onPersistableStateChange = nil
-        self.webView = nil
+        setWebViewIfNeeded(nil)
     }
 }

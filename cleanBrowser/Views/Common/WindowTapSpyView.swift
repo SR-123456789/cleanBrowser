@@ -16,9 +16,7 @@ struct WindowTapSpyView: UIViewRepresentable {
 
     func updateUIView(_ uiView: UIView, context: Context) {
         context.coordinator.onTap = onTap
-        DispatchQueue.main.async {
-            context.coordinator.attachIfNeeded(from: uiView)
-        }
+        context.coordinator.attachIfNeeded(from: uiView)
     }
 
     static func dismantleUIView(_ uiView: UIView, coordinator: Coordinator) {

@@ -33,9 +33,21 @@ final class BrowserStore: ObservableObject {
     }
 
     private let persistence: any BrowserSessionPersisting
+    private let persistDebounceInterval: TimeInterval
+    private let scheduleDelayedWork: @MainActor (TimeInterval, DispatchWorkItem) -> Void
     private var isRestoringState = false
-    init(persistence: any BrowserSessionPersisting = UserDefaultsBrowserSessionPersistence()) {
+    private var pendingPersistWorkItem: DispatchWorkItem?
+
+    init(
+        persistence: any BrowserSessionPersisting = UserDefaultsBrowserSessionPersistence(),
+        persistDebounceInterval: TimeInterval = 0.75,
+        scheduleDelayedWork: @escaping @MainActor (TimeInterval, DispatchWorkItem) -> Void = { delay, workItem in
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
+        }
+    ) {
         self.persistence = persistence
+        self.persistDebounceInterval = persistDebounceInterval
+        self.scheduleDelayedWork = scheduleDelayedWork
 
         let state = persistence.load()
         let restoredTabs = state.tabs.map { record in
@@ -92,7 +104,7 @@ final class BrowserStore: ObservableObject {
         isMutedGlobal = muted
         let script = WebViewJS.muteScript(muted)
         for tab in tabs {
-            tab.isMuted = muted
+            tab.setMutedIfNeeded(muted)
             tab.webView?.evaluateJavaScript(script, completionHandler: nil)
         }
     }
@@ -127,6 +139,7 @@ final class BrowserStore: ObservableObject {
 
     func persistCurrentSession() {
         guard !isRestoringState else { return }
+        flushPendingPersist()
         persistSession()
     }
 
@@ -155,9 +168,25 @@ final class BrowserStore: ObservableObject {
     private func bindTabStateObservers() {
         for tab in tabs {
             tab.onPersistableStateChange = { [weak self] in
-                self?.persistCurrentSession()
+                self?.scheduleDebouncedPersist()
             }
         }
+    }
+
+    private func scheduleDebouncedPersist() {
+        guard !isRestoringState else { return }
+
+        pendingPersistWorkItem?.cancel()
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.persistCurrentSession()
+        }
+        pendingPersistWorkItem = workItem
+        scheduleDelayedWork(persistDebounceInterval, workItem)
+    }
+
+    private func flushPendingPersist() {
+        pendingPersistWorkItem?.cancel()
+        pendingPersistWorkItem = nil
     }
 
     private func propagateCustomKeyboardPreference() {
@@ -169,7 +198,7 @@ final class BrowserStore: ObservableObject {
 
     private func applyInitialMuteState() {
         guard isMutedGlobal else { return }
-        tabs.forEach { $0.isMuted = true }
+        tabs.forEach { $0.setMutedIfNeeded(true) }
     }
 
     private func isSearchEngineHost(_ host: String?) -> Bool {

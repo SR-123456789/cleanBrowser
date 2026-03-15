@@ -11,13 +11,13 @@ struct DailyInterstitialGateOverlay: View {
 
     var body: some View {
         ZStack {
-            Rectangle()
-                .fill(.ultraThinMaterial)
+            Color.black.opacity(0.18)
+                .allowsHitTesting(false)
                 .ignoresSafeArea()
 
-            VStack(spacing: 20) {
+            VStack(spacing: 18) {
                 Image(systemName: "play.rectangle.fill")
-                    .font(.system(size: 36, weight: .semibold))
+                    .font(.system(size: 34, weight: .semibold))
                     .foregroundStyle(Color.blue)
 
                 VStack(spacing: 10) {
@@ -59,13 +59,13 @@ struct DailyInterstitialGateOverlay: View {
             }
             .padding(28)
             .frame(maxWidth: 420)
-            .background(Color(.systemBackground))
+            .background(Color(.secondarySystemBackground))
             .clipShape(RoundedRectangle(cornerRadius: 28))
             .overlay(
                 RoundedRectangle(cornerRadius: 28)
                     .stroke(Color.primary.opacity(0.08), lineWidth: 1)
             )
-            .shadow(color: Color.black.opacity(0.12), radius: 20, y: 8)
+            .shadow(color: Color.black.opacity(0.08), radius: 12, y: 6)
             .padding(24)
         }
     }

@@ -71,6 +71,37 @@ final class BrowserStoreTests: XCTestCase {
         XCTAssertEqual(persistence.savedStates.last?.tabs.first?.title, "Updated")
     }
 
+    func test_tabURLAndTitleChanges_areDebouncedIntoSinglePersist() {
+        let persistence = BrowserSessionPersistenceSpy(loadedState: .init(
+            tabs: [.init(url: BrowserURLResolver.defaultHomePage, title: "新しいタブ")],
+            activeTabIndex: 0,
+            confirmNavigation: true,
+            isMutedGlobal: false,
+            customKeyboardEnabled: false
+        ))
+        var scheduledWorkItems: [DispatchWorkItem] = []
+        let store = BrowserStore(
+            persistence: persistence,
+            persistDebounceInterval: 1,
+            scheduleDelayedWork: { _, workItem in
+                scheduledWorkItems.append(workItem)
+            }
+        )
+
+        store.tabs[0].url = "https://example.com/page"
+        store.tabs[0].title = "Updated"
+
+        XCTAssertEqual(persistence.savedStates.count, 0)
+        XCTAssertEqual(scheduledWorkItems.count, 2)
+        XCTAssertTrue(scheduledWorkItems[0].isCancelled)
+
+        scheduledWorkItems[1].perform()
+
+        XCTAssertEqual(persistence.savedStates.count, 1)
+        XCTAssertEqual(persistence.savedStates.last?.tabs.first?.url, "https://example.com/page")
+        XCTAssertEqual(persistence.savedStates.last?.tabs.first?.title, "Updated")
+    }
+
     func test_toggleGlobalMute_updatesAllTabs() {
         let (store, _) = makeStore()
         store.addNewTab(url: "https://second.example")
@@ -117,6 +148,15 @@ final class BrowserStoreTests: XCTestCase {
         )
     ) -> (BrowserStore, BrowserSessionPersistenceSpy) {
         let persistence = BrowserSessionPersistenceSpy(loadedState: state)
-        return (BrowserStore(persistence: persistence), persistence)
+        return (
+            BrowserStore(
+                persistence: persistence,
+                persistDebounceInterval: 0,
+                scheduleDelayedWork: { _, workItem in
+                    workItem.perform()
+                }
+            ),
+            persistence
+        )
     }
 }

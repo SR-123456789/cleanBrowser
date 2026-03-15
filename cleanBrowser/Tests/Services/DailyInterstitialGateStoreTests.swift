@@ -49,6 +49,19 @@ final class DailyInterstitialGateStoreTests: XCTestCase {
         XCTAssertFalse(postCompletionState.hasReachedThreshold)
     }
 
+    func test_recordTap_doesNotExceedThresholdAfterTenthTap() {
+        let store = makeStore(now: date("2026-03-15"))
+
+        for _ in 0..<DailyInterstitialGateState.tapThreshold {
+            _ = store.recordTap()
+        }
+
+        let stateAfterExtraTap = store.recordTap()
+
+        XCTAssertEqual(stateAfterExtraTap.tapCount, DailyInterstitialGateState.tapThreshold)
+        XCTAssertTrue(stateAfterExtraTap.hasReachedThreshold)
+    }
+
     func test_currentState_resetsTapCountWhenStoredDayIsDifferent() {
         defaults.set("2026-03-14", forKey: "daily_interstitial.tap_day")
         defaults.set(9, forKey: "daily_interstitial.tap_count")

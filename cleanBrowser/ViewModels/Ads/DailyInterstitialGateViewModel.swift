@@ -2,6 +2,8 @@ import Foundation
 
 @MainActor
 final class DailyInterstitialGateViewModel: ObservableObject {
+    private static let adPreloadThreshold = max(1, DailyInterstitialGateState.tapThreshold - 2)
+
     @Published private(set) var isGatePresented = false
     @Published private(set) var isAdReady = false
     @Published private(set) var isLoadingAd = false
@@ -9,9 +11,10 @@ final class DailyInterstitialGateViewModel: ObservableObject {
     @Published private(set) var errorMessage: String?
 
     private let stateStore: any DailyInterstitialGateStoring
-    private let adService: AdMobInterstitialService
+    private let adService: any InterstitialAdServing
     private var canShowPersonalizedAds = false
     private var hasReachedThresholdToday = false
+    private var lastPreparedDayKey: String?
 
     init() {
         self.stateStore = UserDefaultsDailyInterstitialGateStore()
@@ -22,7 +25,7 @@ final class DailyInterstitialGateViewModel: ObservableObject {
 
     init(
         stateStore: any DailyInterstitialGateStoring,
-        adService: AdMobInterstitialService
+        adService: any InterstitialAdServing
     ) {
         self.stateStore = stateStore
         self.adService = adService
@@ -40,7 +43,11 @@ final class DailyInterstitialGateViewModel: ObservableObject {
     }
 
     var isBlockingUI: Bool {
-        isGatePresented
+        false
+    }
+
+    var shouldTrackScreenTaps: Bool {
+        !hasReachedThresholdToday && !isAdPresenting
     }
 
     var titleText: String {
@@ -77,33 +84,38 @@ final class DailyInterstitialGateViewModel: ObservableObject {
         let state = stateStore.currentState()
         sync(with: state)
 
-        guard !state.hasCompletedToday else {
+        guard shouldPrepareAd(for: state) else {
             return
         }
 
-        adService.prepare(canShowPersonalizedAds: canShowPersonalizedAds)
+        requestAdIfNeeded(for: state)
     }
 
     func recordScreenTap() {
-        guard !isGatePresented else { return }
+        guard shouldTrackScreenTaps else { return }
 
+        let hadReachedThreshold = hasReachedThresholdToday
+        let shouldPreloadBeforeTap = shouldPreloadAd
         let state = stateStore.recordTap()
         sync(with: state)
 
-        if state.hasReachedThreshold {
-            adService.prepare(canShowPersonalizedAds: canShowPersonalizedAds)
+        if (state.hasReachedThreshold && !hadReachedThreshold)
+            || (shouldPreloadAd && !shouldPreloadBeforeTap) {
+            requestAdIfNeeded(for: state)
         }
     }
 
     func presentAd() {
-        errorMessage = nil
-        isAdPresenting = true
+        setErrorMessage(nil)
+        setAdPresenting(true)
+        updateGatePresentation()
 
         guard adService.presentIfReady() else {
-            isAdPresenting = false
-            adService.prepare(canShowPersonalizedAds: canShowPersonalizedAds)
+            setAdPresenting(false)
+            updateGatePresentation()
+            requestAdIfNeeded(for: stateStore.currentState(), force: true)
             if !isLoadingAd {
-                errorMessage = "広告を準備しています。読み込み後にもう一度お試しください。"
+                setErrorMessage("広告を準備しています。読み込み後にもう一度お試しください。")
             }
             return
         }
@@ -111,29 +123,33 @@ final class DailyInterstitialGateViewModel: ObservableObject {
 
     private func sync(with state: DailyInterstitialGateState) {
         hasReachedThresholdToday = state.hasReachedThreshold
+        if lastPreparedDayKey != state.dayKey, !state.hasCompletedToday {
+            lastPreparedDayKey = nil
+        }
 
         if state.hasCompletedToday {
-            errorMessage = nil
+            setErrorMessage(nil)
         } else if !state.hasReachedThreshold {
-            errorMessage = nil
+            setErrorMessage(nil)
         }
 
         updateGatePresentation()
     }
 
     private func applyAdState(_ state: AdMobInterstitialService.State) {
-        isAdReady = state.isReady
-        isLoadingAd = state.isLoading
+        setAdReady(state.isReady)
+        setLoadingAd(state.isLoading)
 
         if let errorMessage = state.errorMessage, isGatePresented {
-            self.errorMessage = errorMessage
+            setErrorMessage(errorMessage)
         }
 
         updateGatePresentation()
     }
 
     private func handleAdFinished(_ didFinish: Bool) {
-        isAdPresenting = false
+        setAdPresenting(false)
+        updateGatePresentation()
 
         guard didFinish else {
             updateGatePresentation()
@@ -142,12 +158,51 @@ final class DailyInterstitialGateViewModel: ObservableObject {
 
         let state = stateStore.markCompleted()
         sync(with: state)
-        isAdReady = false
-        isLoadingAd = false
+        setAdReady(false)
+        setLoadingAd(false)
         updateGatePresentation()
     }
 
     private func updateGatePresentation() {
-        isGatePresented = hasReachedThresholdToday && isAdReady && !isAdPresenting
+        let newValue = hasReachedThresholdToday && isAdReady && !isAdPresenting
+        guard isGatePresented != newValue else { return }
+        isGatePresented = newValue
+    }
+
+    private var shouldPreloadAd: Bool {
+        hasReachedThresholdToday || stateStore.currentState().tapCount >= Self.adPreloadThreshold
+    }
+
+    private func shouldPrepareAd(for state: DailyInterstitialGateState) -> Bool {
+        guard !state.hasCompletedToday else { return false }
+        return state.tapCount >= Self.adPreloadThreshold
+    }
+
+    private func requestAdIfNeeded(for state: DailyInterstitialGateState, force: Bool = false) {
+        guard shouldPrepareAd(for: state) else { return }
+        guard force || lastPreparedDayKey != state.dayKey else { return }
+
+        lastPreparedDayKey = state.dayKey
+        adService.prepare(canShowPersonalizedAds: canShowPersonalizedAds)
+    }
+
+    private func setAdReady(_ value: Bool) {
+        guard isAdReady != value else { return }
+        isAdReady = value
+    }
+
+    private func setLoadingAd(_ value: Bool) {
+        guard isLoadingAd != value else { return }
+        isLoadingAd = value
+    }
+
+    private func setAdPresenting(_ value: Bool) {
+        guard isAdPresenting != value else { return }
+        isAdPresenting = value
+    }
+
+    private func setErrorMessage(_ value: String?) {
+        guard errorMessage != value else { return }
+        errorMessage = value
     }
 }

@@ -57,7 +57,7 @@ struct BrowserView: View {
                 }
             }
             .background {
-                if !dailyInterstitialGateViewModel.isAdPresenting && !dailyInterstitialGateViewModel.isGatePresented {
+                if dailyInterstitialGateViewModel.shouldTrackScreenTaps {
                     WindowTapSpyView {
                         guard !viewModel.isModalPresented else { return }
                         dailyInterstitialGateViewModel.recordScreenTap()
@@ -65,7 +65,6 @@ struct BrowserView: View {
                     .frame(width: 0, height: 0)
                 }
             }
-            .allowsHitTesting(!dailyInterstitialGateViewModel.isBlockingUI)
 
             if dailyInterstitialGateViewModel.isGatePresented {
                 DailyInterstitialGateOverlay(
@@ -77,6 +76,7 @@ struct BrowserView: View {
                     isLoading: dailyInterstitialGateViewModel.isLoadingAd,
                     onPrimaryAction: dailyInterstitialGateViewModel.presentAd
                 )
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
         .animation(.easeInOut(duration: 0.25), value: viewModel.isKeyboardVisible)
@@ -110,11 +110,6 @@ struct BrowserView: View {
             dailyInterstitialGateViewModel.prepareIfNeeded(
                 canShowPersonalizedAds: canShowPersonalizedAds
             )
-        }
-        .onChange(of: dailyInterstitialGateViewModel.isBlockingUI) { _, isBlockingUI in
-            if isBlockingUI {
-                viewModel.isKeyboardVisible = false
-            }
         }
     }
 }

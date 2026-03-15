@@ -69,7 +69,7 @@ struct WebViewRepresentable: UIViewRepresentable {
             webView.load(URLRequest(url: url))
         }
 
-        tab.webView = webView
+        tab.setWebViewIfNeeded(webView)
         context.coordinator.applyRuntimePreferencesIfNeeded(to: webView, force: true)
         return webView
     }
@@ -233,24 +233,30 @@ struct WebViewRepresentable: UIViewRepresentable {
 
         func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
             DispatchQueue.main.async {
-                self.tab.isLoading = true
+                self.tab.setNavigationStateIfNeeded(
+                    canGoBack: self.tab.canGoBack,
+                    canGoForward: self.tab.canGoForward,
+                    isLoading: true
+                )
             }
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             DispatchQueue.main.async {
-                self.tab.isLoading = false
-                self.tab.canGoBack = webView.canGoBack
-                self.tab.canGoForward = webView.canGoForward
+                self.tab.setNavigationStateIfNeeded(
+                    canGoBack: webView.canGoBack,
+                    canGoForward: webView.canGoForward,
+                    isLoading: false
+                )
 
                 if let url = webView.url {
-                    self.tab.url = url.absoluteString
+                    self.tab.setURLIfNeeded(url.absoluteString)
                 }
 
                 webView.evaluateJavaScript("document.title") { result, _ in
                     guard let title = result as? String, !title.isEmpty else { return }
                     DispatchQueue.main.async {
-                        self.tab.title = title
+                        self.tab.setTitleIfNeeded(title)
                     }
                 }
 
@@ -260,13 +266,21 @@ struct WebViewRepresentable: UIViewRepresentable {
 
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
             DispatchQueue.main.async {
-                self.tab.isLoading = false
+                self.tab.setNavigationStateIfNeeded(
+                    canGoBack: self.tab.canGoBack,
+                    canGoForward: self.tab.canGoForward,
+                    isLoading: false
+                )
             }
         }
 
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
             DispatchQueue.main.async {
-                self.tab.isLoading = false
+                self.tab.setNavigationStateIfNeeded(
+                    canGoBack: self.tab.canGoBack,
+                    canGoForward: self.tab.canGoForward,
+                    isLoading: false
+                )
             }
         }
 

@@ -53,7 +53,7 @@ final class UserDefaultsDailyInterstitialGateStore: DailyInterstitialGateStoring
 
     func recordTap() -> DailyInterstitialGateState {
         var state = currentState()
-        guard !state.hasCompletedToday else { return state }
+        guard !state.hasCompletedToday, !state.hasReachedThreshold else { return state }
 
         state.tapCount += 1
         persist(state)

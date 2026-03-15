@@ -2,7 +2,17 @@ import Foundation
 import GoogleMobileAds
 
 @MainActor
-final class AdMobInterstitialService: NSObject {
+protocol InterstitialAdServing: AnyObject {
+    var onStateChange: ((AdMobInterstitialService.State) -> Void)? { get set }
+    var onAdFinished: ((Bool) -> Void)? { get set }
+
+    func prepare(canShowPersonalizedAds: Bool)
+    @discardableResult
+    func presentIfReady() -> Bool
+}
+
+@MainActor
+final class AdMobInterstitialService: NSObject, InterstitialAdServing {
     struct State: Equatable {
         var isReady = false
         var isLoading = false
@@ -96,7 +106,9 @@ final class AdMobInterstitialService: NSObject {
     }
 
     private func updateState(isReady: Bool, isLoading: Bool, errorMessage: String?) {
-        state = State(isReady: isReady, isLoading: isLoading, errorMessage: errorMessage)
+        let newState = State(isReady: isReady, isLoading: isLoading, errorMessage: errorMessage)
+        guard state != newState else { return }
+        state = newState
     }
 }
 

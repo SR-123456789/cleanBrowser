@@ -81,7 +81,7 @@ final class BrowserViewModel: ObservableObject {
 
     func navigate(to rawInput: String) {
         guard let activeTab, let destinationURL = BrowserURLResolver.resolve(rawInput) else { return }
-        activeTab.url = destinationURL.absoluteString
+        activeTab.setURLIfNeeded(destinationURL.absoluteString)
         activeTab.webView?.load(URLRequest(url: destinationURL))
     }
 
