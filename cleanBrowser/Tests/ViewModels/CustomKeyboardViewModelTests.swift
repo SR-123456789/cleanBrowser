@@ -62,4 +62,50 @@ final class CustomKeyboardViewModelTests: XCTestCase {
         XCTAssertEqual(deleteCallCount, 1)
         XCTAssertEqual(sut.lastOutputChar, "い")
     }
+
+    func test_leadingSidebarKeys_forHiraganaExposeExpectedShortcuts() {
+        let sut = CustomKeyboardViewModel()
+        sut.currentLayout = .hiragana
+
+        let keys = sut.leadingSidebarKeys
+
+        XCTAssertEqual(keys.map(\.title), ["", "カナ", "ABC", "123"])
+        XCTAssertEqual(keys[1].action, .selectLayout(.katakana))
+        XCTAssertEqual(keys[2].action, .selectLayout(.english))
+        XCTAssertEqual(keys[3].action, .selectLayout(.numbers))
+    }
+
+    func test_handleSidebarAction_switchingAwayFromEnglishResetsShift() {
+        let sut = CustomKeyboardViewModel()
+        sut.currentLayout = .english
+        sut.isShiftPressed = true
+
+        let shouldDismiss = sut.handleSidebarAction(.selectLayout(.hiragana))
+
+        XCTAssertFalse(shouldDismiss)
+        XCTAssertEqual(sut.currentLayout, .hiragana)
+        XCTAssertFalse(sut.isShiftPressed)
+    }
+
+    func test_englishBottomRowKeys_matchExpectedOrder() {
+        let sut = CustomKeyboardViewModel()
+
+        let keys = sut.englishBottomRowKeys
+
+        XCTAssertEqual(
+            keys.map(\.title),
+            ["123", "かな", "space", "@", ".", "return"]
+        )
+    }
+
+    func test_numbersBottomRowKeys_matchExpectedOrder() {
+        let sut = CustomKeyboardViewModel()
+
+        let keys = sut.numbersBottomRowKeys
+
+        XCTAssertEqual(
+            keys.map(\.title),
+            ["かな", "space", ".", "return"]
+        )
+    }
 }

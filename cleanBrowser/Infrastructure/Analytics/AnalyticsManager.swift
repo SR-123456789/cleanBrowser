@@ -8,7 +8,10 @@ protocol AnalyticsTracking: AnyObject {
 
 final class AnalyticsManager: AnalyticsTracking {
     private enum Constants {
-        static let projectToken = "phc_lelswm7h3ZOMJtBK71Fy8yiqZhIT1Oy6jWvCZiHWx3"
+//        static let projectToken = "phc_lelswm7h3ZOMJtBK71Fy8yiqZhIT1Oy6jWvCZiHWx3"
+        
+        static let projectToken = "test_token" // ←あとで本番のトークンに
+
         static let host = "https://us.i.posthog.com"
     }
 

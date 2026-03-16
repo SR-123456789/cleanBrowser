@@ -27,9 +27,16 @@ final class BrowserSessionPersistenceTests: XCTestCase {
                 activeTabIndex: 0,
                 confirmNavigation: true,
                 isMutedGlobal: false,
-                customKeyboardEnabled: false
+                customKeyboardEnabled: true
             )
         )
+    }
+
+    func test_load_preservesExplicitlyDisabledCustomKeyboardSetting() {
+        defaults.set(false, forKey: "CustomKeyboardEnabled")
+        let persistence = UserDefaultsBrowserSessionPersistence(userDefaults: defaults)
+
+        XCTAssertFalse(persistence.load().customKeyboardEnabled)
     }
 
     func test_saveAndLoad_roundTripSessionState() {

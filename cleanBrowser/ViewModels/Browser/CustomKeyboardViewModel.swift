@@ -16,6 +16,76 @@ final class CustomKeyboardViewModel: ObservableObject {
         case left
     }
 
+    enum SidebarAction: Hashable {
+        case dismissKeyboard
+        case selectLayout(KeyboardLayout)
+        case toggleShift
+        case deleteBackward
+        case insertText(String)
+        case insertSpace
+        case insertNewline
+    }
+
+    enum SidebarKeyStyle: Equatable {
+        case utility
+        case selected
+        case accent
+    }
+
+    struct SidebarKeyModel: Identifiable, Equatable {
+        let action: SidebarAction
+        let title: String
+        let systemImageName: String?
+        let heightUnits: Int
+        let style: SidebarKeyStyle
+
+        var id: String {
+            switch action {
+            case .dismissKeyboard:
+                return "dismiss"
+            case .selectLayout(let layout):
+                return "layout-\(layout.title)"
+            case .toggleShift:
+                return "shift"
+            case .deleteBackward:
+                return "delete"
+            case .insertText(let text):
+                return "text-\(text)"
+            case .insertSpace:
+                return "space"
+            case .insertNewline:
+                return "newline"
+            }
+        }
+    }
+
+    struct InlineKeyModel: Identifiable, Equatable {
+        let action: SidebarAction
+        let title: String
+        let systemImageName: String?
+        let widthUnits: Int
+        let style: SidebarKeyStyle
+
+        var id: String {
+            switch action {
+            case .dismissKeyboard:
+                return "inline-dismiss"
+            case .selectLayout(let layout):
+                return "inline-layout-\(layout.title)"
+            case .toggleShift:
+                return "inline-shift"
+            case .deleteBackward:
+                return "inline-delete"
+            case .insertText(let text):
+                return "inline-text-\(text)"
+            case .insertSpace:
+                return "inline-space"
+            case .insertNewline:
+                return "inline-newline"
+            }
+        }
+    }
+
     @Published var currentLayout: KeyboardLayout = .hiragana
     @Published var isShiftPressed = false
     
@@ -34,7 +104,7 @@ final class CustomKeyboardViewModel: ObservableObject {
     private let insertTextHandler: ((String) -> Void)?
     private let deleteTextHandler: (() -> Void)?
     
-    enum KeyboardLayout: CaseIterable {
+    enum KeyboardLayout: CaseIterable, Hashable {
         case hiragana, katakana, english, numbers
         
         var title: String {
@@ -53,6 +123,325 @@ final class CustomKeyboardViewModel: ObservableObject {
     ) {
         self.insertTextHandler = insertTextHandler
         self.deleteTextHandler = deleteTextHandler
+    }
+
+    var activeJapaneseRows: [[String]] {
+        switch currentLayout {
+        case .hiragana:
+            return hiraganaRows
+        case .katakana:
+            return katakanaRows
+        case .english, .numbers:
+            return []
+        }
+    }
+
+    var leadingSidebarKeys: [SidebarKeyModel] {
+        switch currentLayout {
+        case .hiragana:
+            return [
+                SidebarKeyModel(
+                    action: .dismissKeyboard,
+                    title: "",
+                    systemImageName: "keyboard.chevron.compact.down",
+                    heightUnits: 1,
+                    style: .utility
+                ),
+                SidebarKeyModel(
+                    action: .selectLayout(.katakana),
+                    title: "カナ",
+                    systemImageName: nil,
+                    heightUnits: 1,
+                    style: .utility
+                ),
+                SidebarKeyModel(
+                    action: .selectLayout(.english),
+                    title: "ABC",
+                    systemImageName: nil,
+                    heightUnits: 1,
+                    style: .utility
+                ),
+                SidebarKeyModel(
+                    action: .selectLayout(.numbers),
+                    title: "123",
+                    systemImageName: nil,
+                    heightUnits: 1,
+                    style: .utility
+                ),
+            ]
+        case .katakana:
+            return [
+                SidebarKeyModel(
+                    action: .dismissKeyboard,
+                    title: "",
+                    systemImageName: "keyboard.chevron.compact.down",
+                    heightUnits: 1,
+                    style: .utility
+                ),
+                SidebarKeyModel(
+                    action: .selectLayout(.hiragana),
+                    title: "かな",
+                    systemImageName: nil,
+                    heightUnits: 1,
+                    style: .utility
+                ),
+                SidebarKeyModel(
+                    action: .selectLayout(.english),
+                    title: "ABC",
+                    systemImageName: nil,
+                    heightUnits: 1,
+                    style: .utility
+                ),
+                SidebarKeyModel(
+                    action: .selectLayout(.numbers),
+                    title: "123",
+                    systemImageName: nil,
+                    heightUnits: 1,
+                    style: .utility
+                ),
+            ]
+        case .english:
+            return [
+                SidebarKeyModel(
+                    action: .dismissKeyboard,
+                    title: "",
+                    systemImageName: "keyboard.chevron.compact.down",
+                    heightUnits: 1,
+                    style: .utility
+                ),
+                SidebarKeyModel(
+                    action: .selectLayout(.hiragana),
+                    title: "かな",
+                    systemImageName: nil,
+                    heightUnits: 1,
+                    style: .utility
+                ),
+                SidebarKeyModel(
+                    action: .selectLayout(.numbers),
+                    title: "123",
+                    systemImageName: nil,
+                    heightUnits: 1,
+                    style: .utility
+                ),
+                SidebarKeyModel(
+                    action: .toggleShift,
+                    title: "Shift",
+                    systemImageName: "shift",
+                    heightUnits: 1,
+                    style: isShiftPressed ? .selected : .utility
+                ),
+            ]
+        case .numbers:
+            return [
+                SidebarKeyModel(
+                    action: .dismissKeyboard,
+                    title: "",
+                    systemImageName: "keyboard.chevron.compact.down",
+                    heightUnits: 1,
+                    style: .utility
+                ),
+                SidebarKeyModel(
+                    action: .selectLayout(.hiragana),
+                    title: "かな",
+                    systemImageName: nil,
+                    heightUnits: 1,
+                    style: .utility
+                ),
+                SidebarKeyModel(
+                    action: .selectLayout(.english),
+                    title: "ABC",
+                    systemImageName: nil,
+                    heightUnits: 1,
+                    style: .utility
+                ),
+                SidebarKeyModel(
+                    action: .selectLayout(.numbers),
+                    title: "123",
+                    systemImageName: nil,
+                    heightUnits: 1,
+                    style: .selected
+                ),
+            ]
+        }
+    }
+
+    var trailingSidebarKeys: [SidebarKeyModel] {
+        [
+            SidebarKeyModel(
+                action: .deleteBackward,
+                title: "",
+                systemImageName: "delete.left",
+                heightUnits: 1,
+                style: .utility
+            ),
+            SidebarKeyModel(
+                action: .insertSpace,
+                title: "空白",
+                systemImageName: nil,
+                heightUnits: 1,
+                style: .utility
+            ),
+            SidebarKeyModel(
+                action: .insertNewline,
+                title: "改行",
+                systemImageName: nil,
+                heightUnits: 2,
+                style: .accent
+            ),
+        ]
+    }
+
+    var englishLeadingInlineKey: InlineKeyModel {
+        InlineKeyModel(
+            action: .toggleShift,
+            title: "shift",
+            systemImageName: "shift",
+            widthUnits: 1,
+            style: isShiftPressed ? .selected : .utility
+        )
+    }
+
+    var englishTrailingInlineKey: InlineKeyModel {
+        InlineKeyModel(
+            action: .deleteBackward,
+            title: "",
+            systemImageName: "delete.left",
+            widthUnits: 1,
+            style: .utility
+        )
+    }
+
+    var englishBottomRowKeys: [InlineKeyModel] {
+        [
+            InlineKeyModel(
+                action: .selectLayout(.numbers),
+                title: "123",
+                systemImageName: nil,
+                widthUnits: 1,
+                style: .utility
+            ),
+            InlineKeyModel(
+                action: .selectLayout(.hiragana),
+                title: "かな",
+                systemImageName: nil,
+                widthUnits: 1,
+                style: .utility
+            ),
+            InlineKeyModel(
+                action: .insertSpace,
+                title: "space",
+                systemImageName: nil,
+                widthUnits: 3,
+                style: .utility
+            ),
+            InlineKeyModel(
+                action: .insertText("@"),
+                title: "@",
+                systemImageName: nil,
+                widthUnits: 1,
+                style: .utility
+            ),
+            InlineKeyModel(
+                action: .insertText("."),
+                title: ".",
+                systemImageName: nil,
+                widthUnits: 1,
+                style: .utility
+            ),
+            InlineKeyModel(
+                action: .insertNewline,
+                title: "return",
+                systemImageName: nil,
+                widthUnits: 2,
+                style: .accent
+            ),
+        ]
+    }
+
+    var numbersLeadingInlineKey: InlineKeyModel {
+        InlineKeyModel(
+            action: .selectLayout(.english),
+            title: "ABC",
+            systemImageName: nil,
+            widthUnits: 1,
+            style: .utility
+        )
+    }
+
+    var numbersTrailingInlineKey: InlineKeyModel {
+        InlineKeyModel(
+            action: .deleteBackward,
+            title: "",
+            systemImageName: "delete.left",
+            widthUnits: 1,
+            style: .utility
+        )
+    }
+
+    var numbersBottomRowKeys: [InlineKeyModel] {
+        [
+            InlineKeyModel(
+                action: .selectLayout(.hiragana),
+                title: "かな",
+                systemImageName: nil,
+                widthUnits: 1,
+                style: .utility
+            ),
+            InlineKeyModel(
+                action: .insertSpace,
+                title: "space",
+                systemImageName: nil,
+                widthUnits: 3,
+                style: .utility
+            ),
+            InlineKeyModel(
+                action: .insertText("."),
+                title: ".",
+                systemImageName: nil,
+                widthUnits: 1,
+                style: .utility
+            ),
+            InlineKeyModel(
+                action: .insertNewline,
+                title: "return",
+                systemImageName: nil,
+                widthUnits: 2,
+                style: .accent
+            ),
+        ]
+    }
+
+    func handleSidebarAction(_ action: SidebarAction) -> Bool {
+        switch action {
+        case .dismissKeyboard:
+            return true
+        case .selectLayout(let layout):
+            selectLayout(layout)
+            return false
+        case .toggleShift:
+            isShiftPressed.toggle()
+            return false
+        case .deleteBackward:
+            deleteLastCharacter()
+            return false
+        case .insertText(let text):
+            insertText(text)
+            return false
+        case .insertSpace:
+            insertSpace()
+            return false
+        case .insertNewline:
+            insertNewline()
+            return false
+        }
+    }
+
+    func selectLayout(_ layout: KeyboardLayout) {
+        currentLayout = layout
+        resetCycleInputState()
+        if layout != .english {
+            isShiftPressed = false
+        }
     }
     
     // MARK: - キーレイアウトデータ
@@ -79,9 +468,8 @@ final class CustomKeyboardViewModel: ObservableObject {
     
     let numbersRows = [
         ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
-        ["!", "@", "#", "$", "%", "^", "&", "*", "(", ")"],
-        ["-", "_", "=", "+", "[", "]", ";", ":", "'", "\""],
-        [".", ",", "?", "/", "\\", "|", "<", ">", "{", "}"]
+        ["-", "/", ":", ";", "(", ")", "¥", "&", "@", "\""],
+        [".", ",", "?", "!", "'"]
     ]
     
     // MARK: - サイクルデータ

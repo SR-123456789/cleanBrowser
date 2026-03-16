@@ -46,7 +46,7 @@ final class UserDefaultsBrowserSessionPersistence: BrowserSessionPersisting {
             isMutedGlobal: userDefaults.bool(forKey: isMutedGlobalKey),
             customKeyboardEnabled: userDefaults.object(forKey: customKeyboardEnabledKey) != nil
                 ? userDefaults.bool(forKey: customKeyboardEnabledKey)
-                : false
+                : true
         )
     }
 

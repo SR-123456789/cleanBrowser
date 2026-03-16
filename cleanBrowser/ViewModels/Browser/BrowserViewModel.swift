@@ -74,6 +74,19 @@ final class BrowserViewModel: ObservableObject {
         }
     }
 
+    func dismissCustomKeyboard() {
+        guard isKeyboardVisible else { return }
+        withAnimation(.easeInOut(duration: 0.2)) {
+            isKeyboardVisible = false
+        }
+    }
+
+    func switchToSystemKeyboard() {
+        dismissCustomKeyboard()
+        browserStore.customKeyboardEnabled = false
+        activeTab?.webView?.evaluateJavaScript(WebViewJS.restoreNativeKeyboardScript, completionHandler: nil)
+    }
+
     func beginAddressEditing() {
         isKeyboardVisible = false
         activeTab?.webView?.evaluateJavaScript(WebViewJS.blurActiveElementScript, completionHandler: nil)

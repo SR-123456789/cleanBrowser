@@ -59,7 +59,9 @@ struct BrowserView: View {
                 if viewModel.shouldShowCustomKeyboard {
                     CustomKeyboard(
                         webView: viewModel.activeTab?.webView,
-                        isKeyboardVisible: $viewModel.isKeyboardVisible
+                        isKeyboardVisible: $viewModel.isKeyboardVisible,
+                        onDismiss: viewModel.dismissCustomKeyboard,
+                        onSwitchToSystemKeyboard: viewModel.switchToSystemKeyboard
                     )
                     .transition(.opacity.combined(with: .move(edge: .bottom)))
                 }

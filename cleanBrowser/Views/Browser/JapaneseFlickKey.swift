@@ -8,8 +8,8 @@ struct JapaneseFlickKey: View {
     @GestureState private var translation: CGSize = .zero
     @State private var isPressing = false
 
-    private let keyCornerRadius: CGFloat = 8
-    private let optionOffset: CGFloat = 34
+    private let keyCornerRadius: CGFloat = CustomKeyboardMetrics.keyCornerRadius
+    private let optionOffset: CGFloat = 38
     private let flickThreshold: CGFloat = 18
 
     private var activeDirection: CustomKeyboardViewModel.FlickDirection? {
@@ -28,44 +28,47 @@ struct JapaneseFlickKey: View {
     }
 
     var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: keyCornerRadius)
-                .fill(isPressing ? Color.blue.opacity(0.14) : Color.white)
-                .shadow(color: .black.opacity(0.12), radius: 1, y: 1)
-
-            Text(displayedCharacter)
-                .font(.system(size: 20, weight: .medium))
-                .foregroundColor(.black)
-
-            if isPressing && !flickOptions.isEmpty {
-                FlickOptionsOverlay(
-                    baseCharacter: character,
-                    activeDirection: activeDirection,
-                    flickOptions: flickOptions,
-                    optionOffset: optionOffset
-                )
-                .allowsHitTesting(false)
+        RoundedRectangle(cornerRadius: keyCornerRadius)
+            .fill(isPressing ? CustomKeyboardPalette.primaryPressed : CustomKeyboardPalette.primaryKey)
+            .overlay(
+                RoundedRectangle(cornerRadius: keyCornerRadius)
+                    .stroke(Color.black.opacity(0.06), lineWidth: 0.8)
+            )
+            .overlay {
+                Text(displayedCharacter)
+                    .font(.system(size: 26, weight: .medium, design: .rounded))
+                    .foregroundColor(CustomKeyboardPalette.label)
             }
-        }
-        .frame(maxWidth: .infinity, minHeight: 50)
-        .contentShape(RoundedRectangle(cornerRadius: keyCornerRadius))
-        .zIndex(isPressing ? 1 : 0)
-        .gesture(
-            DragGesture(minimumDistance: 0)
-                .updating($translation) { value, state, _ in
-                    state = value.translation
+            .overlay {
+                if isPressing && !flickOptions.isEmpty {
+                    FlickOptionsOverlay(
+                        baseCharacter: character,
+                        activeDirection: activeDirection,
+                        flickOptions: flickOptions,
+                        optionOffset: optionOffset
+                    )
+                    .allowsHitTesting(false)
                 }
-                .onChanged { _ in
-                    if !isPressing {
-                        isPressing = true
+            }
+            .frame(maxWidth: .infinity, minHeight: CustomKeyboardMetrics.keyUnitHeight)
+            .contentShape(RoundedRectangle(cornerRadius: keyCornerRadius))
+            .zIndex(isPressing ? 1 : 0)
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .updating($translation) { value, state, _ in
+                        state = value.translation
                     }
-                }
-                .onEnded { value in
-                    let direction = Self.direction(for: value.translation, threshold: flickThreshold)
-                    isPressing = false
-                    onCommit(direction)
-                }
-        )
+                    .onChanged { _ in
+                        if !isPressing {
+                            isPressing = true
+                        }
+                    }
+                    .onEnded { value in
+                        let direction = Self.direction(for: value.translation, threshold: flickThreshold)
+                        isPressing = false
+                        onCommit(direction)
+                    }
+            )
     }
 
     private static func direction(
@@ -117,12 +120,11 @@ private struct FlickOptionsOverlay: View {
     @ViewBuilder
     private func candidateBubble(label: String, isSelected: Bool) -> some View {
         Text(label)
-            .font(.system(size: 18, weight: .semibold))
-            .foregroundColor(isSelected ? .white : .black)
-            .frame(width: 34, height: 34)
-            .background(isSelected ? Color.blue : Color.white)
+            .font(.system(size: 18, weight: .semibold, design: .rounded))
+            .foregroundColor(isSelected ? CustomKeyboardPalette.inverseLabel : CustomKeyboardPalette.label)
+            .frame(width: 38, height: 38)
+            .background(isSelected ? CustomKeyboardPalette.accentKey : CustomKeyboardPalette.primaryKey)
             .clipShape(Circle())
-            .shadow(color: .black.opacity(0.12), radius: 2, y: 1)
     }
 
     private func offset(for direction: CustomKeyboardViewModel.FlickDirection) -> CGSize {
