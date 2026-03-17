@@ -3,7 +3,7 @@ import XCTest
 
 @MainActor
 final class DailyInterstitialGateViewModelTests: XCTestCase {
-    func test_presentAd_startsPresentingInterstitialImmediately() {
+    func test_presentAd_startsPresentingInterstitialImmediately() async {
         let store = DailyInterstitialGateStoreStub(
             state: DailyInterstitialGateState(
                 dayKey: "2026-03-15",
@@ -12,14 +12,45 @@ final class DailyInterstitialGateViewModelTests: XCTestCase {
             )
         )
         let adService = InterstitialAdServiceStub()
-        let sut = DailyInterstitialGateViewModel(stateStore: store, adService: adService)
+        let sut = DailyInterstitialGateViewModel(
+            stateStore: store,
+            adService: adService,
+            scheduleAdPresentation: { $0() }
+        )
 
         adService.sendState(isReady: true, isLoading: false, errorMessage: nil)
 
         sut.presentAd()
 
+        for _ in 0..<10 where adService.presentIfReadyCallCount == 0 {
+            await Task.yield()
+        }
+
         XCTAssertGreaterThanOrEqual(adService.presentIfReadyCallCount, 1)
         XCTAssertTrue(sut.isAdPresenting)
+    }
+
+    func test_presentAd_marksDailyCompletionImmediately() {
+        let store = DailyInterstitialGateStoreStub(
+            state: DailyInterstitialGateState(
+                dayKey: "2026-03-15",
+                tapCount: DailyInterstitialGateState.tapThreshold,
+                lastCompletedDayKey: nil
+            )
+        )
+        let adService = InterstitialAdServiceStub()
+        let sut = DailyInterstitialGateViewModel(
+            stateStore: store,
+            adService: adService,
+            scheduleAdPresentation: { $0() }
+        )
+
+        adService.sendState(isReady: true, isLoading: false, errorMessage: nil)
+
+        sut.presentAd()
+
+        XCTAssertTrue(store.state.hasCompletedToday)
+        XCTAssertFalse(sut.shouldTrackScreenTaps)
     }
 
     func test_recordScreenTap_preparesInterstitialOnlyWhenThresholdIsFirstReached() {
@@ -147,6 +178,54 @@ final class DailyInterstitialGateViewModelTests: XCTestCase {
         XCTAssertTrue(sut.isGatePresented)
         XCTAssertEqual(analytics.adDialogShownCount, 1)
     }
+
+    func test_handleAdFinished_closeDismiss_tracksViewedAnalytics() {
+        let store = DailyInterstitialGateStoreStub(
+            state: DailyInterstitialGateState(
+                dayKey: "2026-03-15",
+                tapCount: DailyInterstitialGateState.tapThreshold,
+                lastCompletedDayKey: nil
+            )
+        )
+        let adService = InterstitialAdServiceStub()
+        let analytics = AnalyticsTrackerStub()
+        let sut = DailyInterstitialGateViewModel(
+            stateStore: store,
+            adService: adService,
+            analytics: analytics,
+            scheduleAdPresentation: { $0() }
+        )
+
+        adService.sendState(isReady: true, isLoading: false, errorMessage: nil)
+        sut.presentAd()
+        adService.finish(with: .dismissedLikelyByClose)
+
+        XCTAssertEqual(analytics.adDialogViewedCount, 1)
+    }
+
+    func test_handleAdFinished_afterAdClick_doesNotTrackViewedAnalytics() {
+        let store = DailyInterstitialGateStoreStub(
+            state: DailyInterstitialGateState(
+                dayKey: "2026-03-15",
+                tapCount: DailyInterstitialGateState.tapThreshold,
+                lastCompletedDayKey: nil
+            )
+        )
+        let adService = InterstitialAdServiceStub()
+        let analytics = AnalyticsTrackerStub()
+        let sut = DailyInterstitialGateViewModel(
+            stateStore: store,
+            adService: adService,
+            analytics: analytics,
+            scheduleAdPresentation: { $0() }
+        )
+
+        adService.sendState(isReady: true, isLoading: false, errorMessage: nil)
+        sut.presentAd()
+        adService.finish(with: .dismissedAfterClick)
+
+        XCTAssertEqual(analytics.adDialogViewedCount, 0)
+    }
 }
 
 @MainActor
@@ -179,7 +258,7 @@ private final class DailyInterstitialGateStoreStub: DailyInterstitialGateStoring
 @MainActor
 private final class InterstitialAdServiceStub: InterstitialAdServing {
     var onStateChange: ((AdMobInterstitialService.State) -> Void)?
-    var onAdFinished: ((Bool) -> Void)?
+    var onAdFinished: ((InterstitialAdFinishResult) -> Void)?
     var prepareCalls: [Bool] = []
     var presentIfReadyCallCount = 0
     var presentIfReadyResult = true
@@ -202,12 +281,17 @@ private final class InterstitialAdServiceStub: InterstitialAdServing {
             )
         )
     }
+
+    func finish(with result: InterstitialAdFinishResult) {
+        onAdFinished?(result)
+    }
 }
 
 @MainActor
 private final class AnalyticsTrackerStub: AnalyticsTracking {
     private(set) var appOpenedCount = 0
     private(set) var adDialogShownCount = 0
+    private(set) var adDialogViewedCount = 0
 
     func trackAppOpened() {
         appOpenedCount += 1
@@ -215,5 +299,9 @@ private final class AnalyticsTrackerStub: AnalyticsTracking {
 
     func trackAdDialogShown() {
         adDialogShownCount += 1
+    }
+
+    func trackAdDialogViewed() {
+        adDialogViewedCount += 1
     }
 }

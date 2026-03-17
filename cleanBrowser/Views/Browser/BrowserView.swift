@@ -7,6 +7,7 @@ struct BrowserView: View {
     @StateObject private var tabOverviewViewModel: TabOverviewViewModel
     @StateObject private var dailyInterstitialGateViewModel: DailyInterstitialGateViewModel
     private let pinService: any PINManaging
+    private let soundDetector: SoundDetector
 
     init(
         browserStore: BrowserStore,
@@ -15,6 +16,7 @@ struct BrowserView: View {
         analyticsManager: any AnalyticsTracking
     ) {
         self.pinService = pinService
+        self.soundDetector = soundDetector
         _viewModel = StateObject(wrappedValue: BrowserViewModel(browserStore: browserStore))
         _settingsViewModel = StateObject(
             wrappedValue: SettingsViewModel(browserStore: browserStore, soundDetector: soundDetector)
@@ -67,13 +69,13 @@ struct BrowserView: View {
                 }
             }
             .background {
-                if dailyInterstitialGateViewModel.shouldTrackScreenTaps {
-                    WindowTapSpyView {
-                        guard !viewModel.isModalPresented else { return }
-                        dailyInterstitialGateViewModel.recordScreenTap()
-                    }
-                    .frame(width: 0, height: 0)
+                WindowTapSpyView(
+                    isEnabled: dailyInterstitialGateViewModel.shouldTrackScreenTaps
+                ) {
+                    guard !viewModel.isModalPresented else { return }
+                    dailyInterstitialGateViewModel.recordScreenTap()
                 }
+                .frame(width: 0, height: 0)
             }
 
             if dailyInterstitialGateViewModel.isGatePresented {
@@ -120,6 +122,13 @@ struct BrowserView: View {
             dailyInterstitialGateViewModel.prepareIfNeeded(
                 canShowPersonalizedAds: canShowPersonalizedAds
             )
+        }
+        .onChange(of: dailyInterstitialGateViewModel.isAdPresenting) { _, isAdPresenting in
+            if isAdPresenting {
+                soundDetector.suspendTemporarily()
+            } else {
+                soundDetector.resumeTemporarily()
+            }
         }
     }
 }

@@ -1,10 +1,16 @@
 import Foundation
 import GoogleMobileAds
 
+enum InterstitialAdFinishResult: Equatable {
+    case dismissedLikelyByClose
+    case dismissedAfterClick
+    case failedToPresent
+}
+
 @MainActor
 protocol InterstitialAdServing: AnyObject {
     var onStateChange: ((AdMobInterstitialService.State) -> Void)? { get set }
-    var onAdFinished: ((Bool) -> Void)? { get set }
+    var onAdFinished: ((InterstitialAdFinishResult) -> Void)? { get set }
 
     func prepare(canShowPersonalizedAds: Bool)
     @discardableResult
@@ -20,7 +26,7 @@ final class AdMobInterstitialService: NSObject, InterstitialAdServing {
     }
 
     var onStateChange: ((State) -> Void)?
-    var onAdFinished: ((Bool) -> Void)?
+    var onAdFinished: ((InterstitialAdFinishResult) -> Void)?
 
     private var interstitialAd: InterstitialAd?
     private var state = State() {
@@ -30,6 +36,15 @@ final class AdMobInterstitialService: NSObject, InterstitialAdServing {
     }
     private var lastCanShowPersonalizedAds = false
     private var didStartSDK = false
+    private var presentRequestedAt: Date?
+    private var presentInvokedAt: Date?
+    private var didRecordClickDuringPresentation = false
+
+    private static let timestampFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
 
     func prepare(canShowPersonalizedAds: Bool) {
         startSDKIfNeeded()
@@ -69,6 +84,9 @@ final class AdMobInterstitialService: NSObject, InterstitialAdServing {
 
     @discardableResult
     func presentIfReady() -> Bool {
+        presentRequestedAt = Date()
+        didRecordClickDuringPresentation = false
+
         guard let interstitialAd else {
             return false
         }
@@ -85,6 +103,7 @@ final class AdMobInterstitialService: NSObject, InterstitialAdServing {
 
         do {
             try interstitialAd.canPresent(from: rootViewController)
+            presentInvokedAt = Date()
             interstitialAd.present(from: rootViewController)
             return true
         } catch {
@@ -110,26 +129,60 @@ final class AdMobInterstitialService: NSObject, InterstitialAdServing {
         guard state != newState else { return }
         state = newState
     }
+
+    private func log(_ message: String) {
+        let timestamp = Self.timestampFormatter.string(from: Date())
+        print("[InterstitialAd][\(timestamp)] \(message)")
+    }
+
+    private func elapsedDescription(since date: Date?) -> String {
+        guard let date else { return "n/a" }
+        return String(format: "%.2fs", Date().timeIntervalSince(date))
+    }
+
+    private func resetPresentationMetrics() {
+        presentRequestedAt = nil
+        presentInvokedAt = nil
+        didRecordClickDuringPresentation = false
+    }
 }
 
 extension AdMobInterstitialService: FullScreenContentDelegate {
+    func adDidRecordClick(_ ad: any FullScreenPresentingAd) {
+        didRecordClickDuringPresentation = true
+    }
+
     func adDidDismissFullScreenContent(_ ad: any FullScreenPresentingAd) {
+        let finishResult: InterstitialAdFinishResult = didRecordClickDuringPresentation
+            ? .dismissedAfterClick
+            : .dismissedLikelyByClose
+        let logMessage = didRecordClickDuringPresentation
+            ? "dismiss callback received after ad click"
+            : "dismiss callback received without ad click; likely close button"
+        log(
+            "\(logMessage). " +
+            "elapsedSincePresentRequest=\(elapsedDescription(since: presentRequestedAt)), " +
+            "elapsedSincePresentInvoke=\(elapsedDescription(since: presentInvokedAt))"
+        )
         interstitialAd = nil
         updateState(isReady: false, isLoading: false, errorMessage: nil)
-        onAdFinished?(true)
+        resetPresentationMetrics()
+        onAdFinished?(finishResult)
     }
 
     func ad(
         _ ad: any FullScreenPresentingAd,
         didFailToPresentFullScreenContentWithError error: Error
     ) {
+        log("didFailToPresentFullScreenContentWithError: \(error.localizedDescription)")
         interstitialAd = nil
         updateState(
             isReady: false,
             isLoading: false,
             errorMessage: "広告を表示できませんでした。通信状況をご確認のうえ、もう一度お試しください。"
         )
-        onAdFinished?(false)
+        resetPresentationMetrics()
+        onAdFinished?(.failedToPresent)
         prepare(canShowPersonalizedAds: lastCanShowPersonalizedAds)
     }
 }

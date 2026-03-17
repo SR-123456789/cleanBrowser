@@ -4,6 +4,7 @@ import PostHog
 protocol AnalyticsTracking: AnyObject {
     func trackAppOpened()
     func trackAdDialogShown()
+    func trackAdDialogViewed()
 }
 
 final class AnalyticsManager: AnalyticsTracking {
@@ -30,6 +31,11 @@ final class AnalyticsManager: AnalyticsTracking {
     func trackAdDialogShown() {
         configureIfNeeded()
         PostHogSDK.shared.capture("ad_dialog_shown")
+    }
+
+    func trackAdDialogViewed() {
+        configureIfNeeded()
+        PostHogSDK.shared.capture("ad_dialog_viewed")
     }
 
     private func configureIfNeeded() {
@@ -70,4 +76,5 @@ final class AnalyticsManager: AnalyticsTracking {
 final class NoopAnalyticsManager: AnalyticsTracking {
     func trackAppOpened() {}
     func trackAdDialogShown() {}
+    func trackAdDialogViewed() {}
 }

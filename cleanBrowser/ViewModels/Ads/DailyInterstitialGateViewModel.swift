@@ -13,22 +13,35 @@ final class DailyInterstitialGateViewModel: ObservableObject {
     private let stateStore: any DailyInterstitialGateStoring
     private let adService: any InterstitialAdServing
     private let analytics: any AnalyticsTracking
+    private let scheduleAdPresentation: (@escaping @Sendable () -> Void) -> Void
     private var canShowPersonalizedAds = false
     private var hasReachedThresholdToday = false
+    private var hasCompletedToday = false
     private var lastPreparedDayKey: String?
 
-    init() {
+    init(
+        scheduleAdPresentation: @escaping (@escaping @Sendable () -> Void) -> Void = { work in
+            DispatchQueue.main.async(execute: work)
+        }
+    ) {
         self.stateStore = UserDefaultsDailyInterstitialGateStore()
         self.adService = AdMobInterstitialService()
         self.analytics = NoopAnalyticsManager()
+        self.scheduleAdPresentation = scheduleAdPresentation
         bindDependencies()
         sync(with: stateStore.currentState())
     }
 
-    init(analytics: any AnalyticsTracking) {
+    init(
+        analytics: any AnalyticsTracking,
+        scheduleAdPresentation: @escaping (@escaping @Sendable () -> Void) -> Void = { work in
+            DispatchQueue.main.async(execute: work)
+        }
+    ) {
         self.stateStore = UserDefaultsDailyInterstitialGateStore()
         self.adService = AdMobInterstitialService()
         self.analytics = analytics
+        self.scheduleAdPresentation = scheduleAdPresentation
         bindDependencies()
         sync(with: stateStore.currentState())
     }
@@ -36,11 +49,15 @@ final class DailyInterstitialGateViewModel: ObservableObject {
     init(
         stateStore: any DailyInterstitialGateStoring,
         adService: any InterstitialAdServing,
-        analytics: any AnalyticsTracking = NoopAnalyticsManager()
+        analytics: any AnalyticsTracking = NoopAnalyticsManager(),
+        scheduleAdPresentation: @escaping (@escaping @Sendable () -> Void) -> Void = { work in
+            DispatchQueue.main.async(execute: work)
+        }
     ) {
         self.stateStore = stateStore
         self.adService = adService
         self.analytics = analytics
+        self.scheduleAdPresentation = scheduleAdPresentation
         bindDependencies()
         sync(with: stateStore.currentState())
     }
@@ -49,8 +66,8 @@ final class DailyInterstitialGateViewModel: ObservableObject {
         adService.onStateChange = { [weak self] state in
             self?.applyAdState(state)
         }
-        adService.onAdFinished = { [weak self] didFinish in
-            self?.handleAdFinished(didFinish)
+        adService.onAdFinished = { [weak self] result in
+            self?.handleAdFinished(result)
         }
     }
 
@@ -59,7 +76,7 @@ final class DailyInterstitialGateViewModel: ObservableObject {
     }
 
     var shouldTrackScreenTaps: Bool {
-        !hasReachedThresholdToday && !isAdPresenting
+        !hasReachedThresholdToday && !hasCompletedToday && !isAdPresenting
     }
 
     var titleText: String {
@@ -67,7 +84,7 @@ final class DailyInterstitialGateViewModel: ObservableObject {
     }
 
     var descriptionText: String {
-        "無料で使い続けられるよう、1日1回だけ広告の表示をお願いしています。広告の表示が終わると、その日は再表示されません。"
+        "無料で使い続けられるよう、1日1回だけ広告の表示をお願いしています。広告の表示を開始すると、その日は再表示されません。"
     }
 
     var detailText: String {
@@ -120,8 +137,18 @@ final class DailyInterstitialGateViewModel: ObservableObject {
     func presentAd() {
         setErrorMessage(nil)
         setAdPresenting(true)
+        let state = stateStore.markCompleted()
+        sync(with: state)
         updateGatePresentation()
 
+        scheduleAdPresentation { [weak self] in
+            Task { @MainActor [weak self] in
+                self?.performPresentAd()
+            }
+        }
+    }
+
+    private func performPresentAd() {
         guard adService.presentIfReady() else {
             setAdPresenting(false)
             updateGatePresentation()
@@ -135,6 +162,7 @@ final class DailyInterstitialGateViewModel: ObservableObject {
 
     private func sync(with state: DailyInterstitialGateState) {
         hasReachedThresholdToday = state.hasReachedThreshold
+        hasCompletedToday = state.hasCompletedToday
         if lastPreparedDayKey != state.dayKey, !state.hasCompletedToday {
             lastPreparedDayKey = nil
         }
@@ -159,19 +187,17 @@ final class DailyInterstitialGateViewModel: ObservableObject {
         updateGatePresentation()
     }
 
-    private func handleAdFinished(_ didFinish: Bool) {
+    private func handleAdFinished(_ result: InterstitialAdFinishResult) {
         setAdPresenting(false)
         updateGatePresentation()
 
-        guard didFinish else {
-            updateGatePresentation()
-            return
-        }
-
-        let state = stateStore.markCompleted()
-        sync(with: state)
         setAdReady(false)
         setLoadingAd(false)
+
+        if result == .dismissedLikelyByClose {
+            analytics.trackAdDialogViewed()
+        }
+
         updateGatePresentation()
     }
 

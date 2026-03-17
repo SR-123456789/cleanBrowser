@@ -2,6 +2,7 @@ import SwiftUI
 import UIKit
 
 struct WindowTapSpyView: UIViewRepresentable {
+    let isEnabled: Bool
     let onTap: () -> Void
 
     func makeCoordinator() -> Coordinator {
@@ -16,7 +17,11 @@ struct WindowTapSpyView: UIViewRepresentable {
 
     func updateUIView(_ uiView: UIView, context: Context) {
         context.coordinator.onTap = onTap
-        context.coordinator.attachIfNeeded(from: uiView)
+        if isEnabled {
+            context.coordinator.attachIfNeeded(from: uiView)
+        } else {
+            context.coordinator.detach()
+        }
     }
 
     static func dismantleUIView(_ uiView: UIView, coordinator: Coordinator) {
@@ -58,6 +63,17 @@ struct WindowTapSpyView: UIViewRepresentable {
             shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
         ) -> Bool {
             true
+        }
+
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+            guard
+                let attachedView,
+                let touchedView = touch.view
+            else {
+                return false
+            }
+
+            return touchedView.isDescendant(of: attachedView)
         }
 
         @objc

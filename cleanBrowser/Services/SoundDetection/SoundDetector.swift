@@ -18,6 +18,8 @@ final class SoundDetector: ObservableObject {
     private let userDefaults: UserDefaults
     private let enabledKey = "SoundDetectionEnabled"
     private let thresholdKey = "SoundDetectionDbThreshold"
+    private var temporarySuspensionCount = 0
+    private var shouldResumeAfterTemporarySuspension = false
 
     init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
@@ -69,6 +71,27 @@ final class SoundDetector: ObservableObject {
         cachedDbThreshold = value
         dbThreshold = value
         userDefaults.set(value, forKey: thresholdKey)
+    }
+
+    func suspendTemporarily() {
+        temporarySuspensionCount += 1
+        guard temporarySuspensionCount == 1 else { return }
+
+        shouldResumeAfterTemporarySuspension = isEnabled
+        stop()
+    }
+
+    func resumeTemporarily() {
+        guard temporarySuspensionCount > 0 else { return }
+        temporarySuspensionCount -= 1
+        guard temporarySuspensionCount == 0 else { return }
+
+        let shouldResume = shouldResumeAfterTemporarySuspension && isEnabled
+        shouldResumeAfterTemporarySuspension = false
+
+        if shouldResume {
+            startIfNeeded()
+        }
     }
 
     private func start() {
