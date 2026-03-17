@@ -7,11 +7,11 @@ protocol AnalyticsTracking: AnyObject {
 }
 
 final class AnalyticsManager: AnalyticsTracking {
-    private enum Constants {
-//        static let projectToken = "phc_lelswm7h3ZOMJtBK71Fy8yiqZhIT1Oy6jWvCZiHWx3"
-        
-        static let projectToken = "test_token" // ←あとで本番のトークンに
+    private enum InfoKeys {
+        static let projectToken = "PostHogProjectToken"
+    }
 
+    private enum Constants {
         static let host = "https://us.i.posthog.com"
     }
 
@@ -34,9 +34,13 @@ final class AnalyticsManager: AnalyticsTracking {
 
     private func configureIfNeeded() {
         guard !isConfigured else { return }
+        guard let projectToken = configuredProjectToken else {
+            assertionFailure("Missing PostHogProjectToken in Info.plist")
+            return
+        }
 
         let configuration = PostHogConfig(
-            apiKey: Constants.projectToken,
+            apiKey: projectToken,
             host: Constants.host
         )
         configuration.captureApplicationLifecycleEvents = false
@@ -53,6 +57,13 @@ final class AnalyticsManager: AnalyticsTracking {
         PostHogSDK.shared.setup(configuration)
         PostHogSDK.shared.identify(deviceIdProvider.distinctId())
         isConfigured = true
+    }
+
+    private var configuredProjectToken: String? {
+        let rawValue = (Bundle.main.object(forInfoDictionaryKey: InfoKeys.projectToken) as? String ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return rawValue.isEmpty ? nil : rawValue
     }
 }
 
