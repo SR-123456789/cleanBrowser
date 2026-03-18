@@ -226,6 +226,7 @@ struct WebViewRepresentable: UIViewRepresentable {
                     },
                     onCancel: {
                         decisionHandler(.cancel)
+                        self.handleCancelledExternalNavigation()
                     }
                 )
             }
@@ -307,7 +308,11 @@ struct WebViewRepresentable: UIViewRepresentable {
                     title: "別タブで開く",
                     image: UIImage(systemName: "plus.square.on.square")
                 ) { [weak self] _ in
-                    self?.browserStore.addNewTab(url: linkURL.absoluteString)
+                    self?.browserStore.addNewTab(
+                        url: linkURL.absoluteString,
+                        openerTabID: self?.browserStore.activeTab?.id,
+                        creationSource: .userOpened
+                    )
                 }
 
                 let copyLink = UIAction(
@@ -335,7 +340,11 @@ struct WebViewRepresentable: UIViewRepresentable {
                 return nil
             }
 
-            browserStore.addNewTab(url: requestURL.absoluteString)
+            browserStore.addNewTab(
+                url: requestURL.absoluteString,
+                openerTabID: browserStore.activeTab?.id,
+                creationSource: .pageOpened
+            )
             return nil
         }
 
@@ -364,7 +373,9 @@ struct WebViewRepresentable: UIViewRepresentable {
                     }
                     self.tab.webView?.evaluateJavaScript(proceedJavaScript, completionHandler: nil)
                 },
-                onCancel: {}
+                onCancel: { [weak self] in
+                    self?.handleCancelledExternalNavigation()
+                }
             )
         }
 
@@ -385,6 +396,24 @@ struct WebViewRepresentable: UIViewRepresentable {
                     && approvedURL.query == requestURL.query
             )
         }
+
+        private func handleCancelledExternalNavigation() {
+            let context = CancelledExternalNavigationRecoveryContext(
+                openerTabID: tab.openerTabID,
+                creationSource: tab.creationSource
+            )
+
+            guard case let .closeCurrentTabAndReturnToOpener(openerTabID) = CancelledExternalNavigationRecoveryPolicy.action(for: context),
+                  let currentIndex = browserStore.index(of: tab.id)
+            else {
+                return
+            }
+
+            DispatchQueue.main.async {
+                self.browserStore.closeTab(at: currentIndex)
+                self.browserStore.switchToTab(withID: openerTabID)
+            }
+        }
     }
 }
 
@@ -392,4 +421,30 @@ private struct RuntimePreferenceState: Equatable {
     let isMutedGlobal: Bool
     let confirmNavigation: Bool
     let customKeyboardEnabled: Bool
+}
+
+struct CancelledExternalNavigationRecoveryContext: Equatable {
+    let openerTabID: UUID?
+    let creationSource: BrowserTabCreationSource
+}
+
+enum CancelledExternalNavigationRecoveryAction: Equatable {
+    case none
+    case closeCurrentTabAndReturnToOpener(UUID)
+}
+
+struct CancelledExternalNavigationRecoveryPolicy {
+    static func action(
+        for context: CancelledExternalNavigationRecoveryContext
+    ) -> CancelledExternalNavigationRecoveryAction {
+        guard let openerTabID = context.openerTabID else {
+            return .none
+        }
+
+        guard context.creationSource == .pageOpened else {
+            return .none
+        }
+
+        return .closeCurrentTabAndReturnToOpener(openerTabID)
+    }
 }

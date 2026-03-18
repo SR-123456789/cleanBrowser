@@ -138,6 +138,40 @@ final class BrowserStoreTests: XCTestCase {
         )
     }
 
+    func test_cancelledExternalNavigationRecovery_closesFreshRedirectTabAndReturnsToOpener() {
+        let openerID = UUID()
+        let action = CancelledExternalNavigationRecoveryPolicy.action(
+            for: .init(
+                openerTabID: openerID,
+                creationSource: .pageOpened
+            )
+        )
+
+        XCTAssertEqual(action, .closeCurrentTabAndReturnToOpener(openerID))
+    }
+
+    func test_cancelledExternalNavigationRecovery_doesNotCloseForManualTab() {
+        let action = CancelledExternalNavigationRecoveryPolicy.action(
+            for: .init(
+                openerTabID: UUID(),
+                creationSource: .manual
+            )
+        )
+
+        XCTAssertEqual(action, .none)
+    }
+
+    func test_cancelledExternalNavigationRecovery_doesNotCloseForUserOpenedTab() {
+        let action = CancelledExternalNavigationRecoveryPolicy.action(
+            for: .init(
+                openerTabID: UUID(),
+                creationSource: .userOpened
+            )
+        )
+
+        XCTAssertEqual(action, .none)
+    }
+
     private func makeStore(
         state: BrowserSessionState = .init(
             tabs: [.init(url: BrowserURLResolver.defaultHomePage, title: "新しいタブ")],

@@ -1,9 +1,17 @@
 import SwiftUI
 import WebKit
 
+enum BrowserTabCreationSource: Equatable {
+    case manual
+    case pageOpened
+    case userOpened
+}
+
 @MainActor
 final class BrowserTab: ObservableObject, Identifiable {
     let id = UUID()
+    let openerTabID: UUID?
+    let creationSource: BrowserTabCreationSource
     @Published var webView: WKWebView?
     @Published var title: String {
         didSet {
@@ -23,9 +31,16 @@ final class BrowserTab: ObservableObject, Identifiable {
     @Published var isMuted: Bool = false
     var onPersistableStateChange: (() -> Void)?
 
-    init(url: String = BrowserURLResolver.defaultHomePage, title: String = "新しいタブ") {
+    init(
+        url: String = BrowserURLResolver.defaultHomePage,
+        title: String = "新しいタブ",
+        openerTabID: UUID? = nil,
+        creationSource: BrowserTabCreationSource = .manual
+    ) {
         self.url = url
         self.title = title
+        self.openerTabID = openerTabID
+        self.creationSource = creationSource
     }
 
     func setWebViewIfNeeded(_ webView: WKWebView?) {

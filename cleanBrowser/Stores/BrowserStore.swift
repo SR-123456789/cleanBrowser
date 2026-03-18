@@ -66,8 +66,16 @@ final class BrowserStore: ObservableObject {
         bindTabStateObservers()
     }
 
-    func addNewTab(url: String = BrowserURLResolver.defaultHomePage) {
-        let newTab = BrowserTab(url: url)
+    func addNewTab(
+        url: String = BrowserURLResolver.defaultHomePage,
+        openerTabID: UUID? = nil,
+        creationSource: BrowserTabCreationSource = .manual
+    ) {
+        let newTab = BrowserTab(
+            url: url,
+            openerTabID: openerTabID,
+            creationSource: creationSource
+        )
         tabs.append(newTab)
         bindTabStateObservers()
         activeTabIndex = tabs.count - 1
@@ -94,6 +102,15 @@ final class BrowserStore: ObservableObject {
     func switchToTab(at index: Int) {
         guard tabs.indices.contains(index) else { return }
         activeTabIndex = index
+    }
+
+    func switchToTab(withID id: UUID) {
+        guard let index = index(of: id) else { return }
+        switchToTab(at: index)
+    }
+
+    func index(of id: UUID) -> Int? {
+        tabs.firstIndex { $0.id == id }
     }
 
     func toggleGlobalMute() {
