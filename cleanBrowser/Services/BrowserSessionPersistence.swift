@@ -11,6 +11,8 @@ struct BrowserSessionState: Equatable {
     let confirmNavigation: Bool
     let isMutedGlobal: Bool
     let customKeyboardEnabled: Bool
+    let systemKeyboardUseCount: Int
+    let hasAcknowledgedCustomKeyboardGuide: Bool
 }
 
 protocol BrowserSessionPersisting {
@@ -25,6 +27,8 @@ final class UserDefaultsBrowserSessionPersistence: BrowserSessionPersisting {
     private let confirmNavigationKey = "ConfirmNavigationEnabled"
     private let isMutedGlobalKey = "GlobalMuted"
     private let customKeyboardEnabledKey = "CustomKeyboardEnabled"
+    private let systemKeyboardUseCountKey = "SystemKeyboardUseCount"
+    private let customKeyboardGuideAcknowledgedKey = "CustomKeyboardGuideAcknowledged"
 
     init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
@@ -46,7 +50,9 @@ final class UserDefaultsBrowserSessionPersistence: BrowserSessionPersisting {
             isMutedGlobal: userDefaults.bool(forKey: isMutedGlobalKey),
             customKeyboardEnabled: userDefaults.object(forKey: customKeyboardEnabledKey) != nil
                 ? userDefaults.bool(forKey: customKeyboardEnabledKey)
-                : true
+                : false,
+            systemKeyboardUseCount: userDefaults.integer(forKey: systemKeyboardUseCountKey),
+            hasAcknowledgedCustomKeyboardGuide: userDefaults.bool(forKey: customKeyboardGuideAcknowledgedKey)
         )
     }
 
@@ -58,5 +64,7 @@ final class UserDefaultsBrowserSessionPersistence: BrowserSessionPersisting {
         userDefaults.set(state.confirmNavigation, forKey: confirmNavigationKey)
         userDefaults.set(state.isMutedGlobal, forKey: isMutedGlobalKey)
         userDefaults.set(state.customKeyboardEnabled, forKey: customKeyboardEnabledKey)
+        userDefaults.set(state.systemKeyboardUseCount, forKey: systemKeyboardUseCountKey)
+        userDefaults.set(state.hasAcknowledgedCustomKeyboardGuide, forKey: customKeyboardGuideAcknowledgedKey)
     }
 }

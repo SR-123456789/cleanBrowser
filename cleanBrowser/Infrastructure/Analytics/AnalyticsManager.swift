@@ -1,10 +1,21 @@
 import Foundation
 import PostHog
 
+enum AnalyticsKeyboardMode: String, Equatable {
+    case system
+    case custom
+
+    init(customKeyboardEnabled: Bool) {
+        self = customKeyboardEnabled ? .custom : .system
+    }
+}
+
 protocol AnalyticsTracking: AnyObject {
-    func trackAppOpened()
+    func trackAppOpened(appVersion: String, keyboardMode: AnalyticsKeyboardMode)
     func trackAdDialogShown()
     func trackAdDialogViewed()
+    func trackKeyboardChoiceDialogShown()
+    func trackKeyboardChoiceSelected(_ keyboardMode: AnalyticsKeyboardMode)
 }
 
 final class AnalyticsManager: AnalyticsTracking {
@@ -23,19 +34,40 @@ final class AnalyticsManager: AnalyticsTracking {
         self.deviceIdProvider = deviceIdProvider
     }
 
-    func trackAppOpened() {
-        configureIfNeeded()
-        PostHogSDK.shared.capture("app_opened")
+    func trackAppOpened(appVersion: String, keyboardMode: AnalyticsKeyboardMode) {
+        capture(
+            "app_opened",
+            properties: [
+                "app_version": appVersion,
+                "keyboard_mode": keyboardMode.rawValue,
+            ]
+        )
     }
 
     func trackAdDialogShown() {
-        configureIfNeeded()
-        PostHogSDK.shared.capture("ad_dialog_shown")
+        capture("ad_dialog_shown")
     }
 
     func trackAdDialogViewed() {
+        capture("ad_dialog_viewed")
+    }
+
+    func trackKeyboardChoiceDialogShown() {
+        capture("keyboard_choice_dialog_shown")
+    }
+
+    func trackKeyboardChoiceSelected(_ keyboardMode: AnalyticsKeyboardMode) {
+        capture(
+            "keyboard_choice_selected",
+            properties: [
+                "keyboard_mode": keyboardMode.rawValue,
+            ]
+        )
+    }
+
+    private func capture(_ event: String, properties: [String: Any]? = nil) {
         configureIfNeeded()
-        PostHogSDK.shared.capture("ad_dialog_viewed")
+        PostHogSDK.shared.capture(event, properties: properties)
     }
 
     private func configureIfNeeded() {
@@ -74,7 +106,26 @@ final class AnalyticsManager: AnalyticsTracking {
 }
 
 final class NoopAnalyticsManager: AnalyticsTracking {
-    func trackAppOpened() {}
+    func trackAppOpened(appVersion: String, keyboardMode: AnalyticsKeyboardMode) {}
     func trackAdDialogShown() {}
     func trackAdDialogViewed() {}
+    func trackKeyboardChoiceDialogShown() {}
+    func trackKeyboardChoiceSelected(_ keyboardMode: AnalyticsKeyboardMode) {}
+}
+
+extension Bundle {
+    var cleanBrowserAppVersion: String {
+        let marketingVersion = object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+        let buildNumber = object(forInfoDictionaryKey: "CFBundleVersion") as? String
+
+        if let marketingVersion, !marketingVersion.isEmpty {
+            return marketingVersion
+        }
+
+        if let buildNumber, !buildNumber.isEmpty {
+            return buildNumber
+        }
+
+        return "unknown"
+    }
 }

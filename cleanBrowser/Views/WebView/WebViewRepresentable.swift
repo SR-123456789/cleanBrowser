@@ -5,18 +5,21 @@ import UIKit
 struct WebViewRepresentable: UIViewRepresentable {
     @ObservedObject var tab: BrowserTab
     let browserStore: BrowserStore
-    let onKeyboardVisibilityChanged: (Bool) -> Void
+    let onInputStateChanged: (WebInputStateChange) -> Void
+    let onSystemKeyboardGuideRequested: () -> Void
     let confirmationPresenter: any NavigationConfirmationPresenting
 
     init(
         tab: BrowserTab,
         browserStore: BrowserStore,
-        onKeyboardVisibilityChanged: @escaping (Bool) -> Void,
+        onInputStateChanged: @escaping (WebInputStateChange) -> Void,
+        onSystemKeyboardGuideRequested: @escaping () -> Void,
         confirmationPresenter: any NavigationConfirmationPresenting = SystemNavigationConfirmationPresenter()
     ) {
         self.tab = tab
         self.browserStore = browserStore
-        self.onKeyboardVisibilityChanged = onKeyboardVisibilityChanged
+        self.onInputStateChanged = onInputStateChanged
+        self.onSystemKeyboardGuideRequested = onSystemKeyboardGuideRequested
         self.confirmationPresenter = confirmationPresenter
     }
 
@@ -25,7 +28,8 @@ struct WebViewRepresentable: UIViewRepresentable {
             tab: tab,
             browserStore: browserStore,
             confirmationPresenter: confirmationPresenter,
-            onKeyboardVisibilityChanged: onKeyboardVisibilityChanged
+            onInputStateChanged: onInputStateChanged,
+            onSystemKeyboardGuideRequested: onSystemKeyboardGuideRequested
         )
     }
 
@@ -45,9 +49,11 @@ struct WebViewRepresentable: UIViewRepresentable {
         webView.scrollView.keyboardDismissMode = .onDrag
         webView.allowsBackForwardNavigationGestures = true
         webView.scrollView.isScrollEnabled = true
+        #if DEBUG
         if #available(iOS 16.4, *) {
             webView.isInspectable = true
         }
+        #endif
 
         let inputHandlerScript = WKUserScript(
             source: WebViewJS.inputHandlerScript,
@@ -78,7 +84,8 @@ struct WebViewRepresentable: UIViewRepresentable {
         context.coordinator.updateDependencies(
             tab: tab,
             browserStore: browserStore,
-            onKeyboardVisibilityChanged: onKeyboardVisibilityChanged
+            onInputStateChanged: onInputStateChanged,
+            onSystemKeyboardGuideRequested: onSystemKeyboardGuideRequested
         )
         context.coordinator.applyRuntimePreferencesIfNeeded(to: uiView)
     }
@@ -92,7 +99,8 @@ struct WebViewRepresentable: UIViewRepresentable {
         private var tab: BrowserTab
         private var browserStore: BrowserStore
         private let confirmationPresenter: any NavigationConfirmationPresenting
-        private var onKeyboardVisibilityChanged: (Bool) -> Void
+        private var onInputStateChanged: (WebInputStateChange) -> Void
+        private var onSystemKeyboardGuideRequested: () -> Void
         private var bypassNextDecision = false
         private var approvedURLFromJS: URL?
         private var lastAppliedPreferenceState: RuntimePreferenceState?
@@ -101,22 +109,26 @@ struct WebViewRepresentable: UIViewRepresentable {
             tab: BrowserTab,
             browserStore: BrowserStore,
             confirmationPresenter: any NavigationConfirmationPresenting,
-            onKeyboardVisibilityChanged: @escaping (Bool) -> Void
+            onInputStateChanged: @escaping (WebInputStateChange) -> Void,
+            onSystemKeyboardGuideRequested: @escaping () -> Void
         ) {
             self.tab = tab
             self.browserStore = browserStore
             self.confirmationPresenter = confirmationPresenter
-            self.onKeyboardVisibilityChanged = onKeyboardVisibilityChanged
+            self.onInputStateChanged = onInputStateChanged
+            self.onSystemKeyboardGuideRequested = onSystemKeyboardGuideRequested
         }
 
         func updateDependencies(
             tab: BrowserTab,
             browserStore: BrowserStore,
-            onKeyboardVisibilityChanged: @escaping (Bool) -> Void
+            onInputStateChanged: @escaping (WebInputStateChange) -> Void,
+            onSystemKeyboardGuideRequested: @escaping () -> Void
         ) {
             self.tab = tab
             self.browserStore = browserStore
-            self.onKeyboardVisibilityChanged = onKeyboardVisibilityChanged
+            self.onInputStateChanged = onInputStateChanged
+            self.onSystemKeyboardGuideRequested = onSystemKeyboardGuideRequested
         }
 
         func attach(to webView: WKWebView) {
@@ -125,9 +137,11 @@ struct WebViewRepresentable: UIViewRepresentable {
             let userContentController = webView.configuration.userContentController
             userContentController.removeScriptMessageHandler(forName: "inputFocused")
             userContentController.removeScriptMessageHandler(forName: "inputBlurred")
+            userContentController.removeScriptMessageHandler(forName: "inputGuideRequested")
             userContentController.removeScriptMessageHandler(forName: "confirmNav")
             userContentController.add(self, name: "inputFocused")
             userContentController.add(self, name: "inputBlurred")
+            userContentController.add(self, name: "inputGuideRequested")
             userContentController.add(self, name: "confirmNav")
         }
 
@@ -135,7 +149,8 @@ struct WebViewRepresentable: UIViewRepresentable {
             let currentState = RuntimePreferenceState(
                 isMutedGlobal: browserStore.isMutedGlobal,
                 confirmNavigation: browserStore.confirmNavigation,
-                customKeyboardEnabled: browserStore.customKeyboardEnabled
+                customKeyboardEnabled: browserStore.customKeyboardEnabled,
+                shouldInterceptSystemKeyboardForGuide: browserStore.shouldSuggestCustomKeyboardGuide
             )
 
             guard force || lastAppliedPreferenceState != currentState else {
@@ -150,6 +165,7 @@ struct WebViewRepresentable: UIViewRepresentable {
             let userContentController = webView.configuration.userContentController
             userContentController.removeScriptMessageHandler(forName: "inputFocused")
             userContentController.removeScriptMessageHandler(forName: "inputBlurred")
+            userContentController.removeScriptMessageHandler(forName: "inputGuideRequested")
             userContentController.removeScriptMessageHandler(forName: "confirmNav")
             webView.navigationDelegate = nil
             webView.uiDelegate = nil
@@ -157,17 +173,30 @@ struct WebViewRepresentable: UIViewRepresentable {
 
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             DispatchQueue.main.async {
+                let usesCustomKeyboard = self.usesCustomKeyboard(from: message)
                 switch message.name {
                 case "inputFocused":
-                    self.onKeyboardVisibilityChanged(true)
+                    self.onInputStateChanged(.init(isFocused: true, usesCustomKeyboard: usesCustomKeyboard))
                 case "inputBlurred":
-                    self.onKeyboardVisibilityChanged(false)
+                    self.onInputStateChanged(.init(isFocused: false, usesCustomKeyboard: usesCustomKeyboard))
+                case "inputGuideRequested":
+                    self.onSystemKeyboardGuideRequested()
                 case "confirmNav":
                     self.handleJavaScriptNavigationConfirmation(message)
                 default:
                     break
                 }
             }
+        }
+
+        private func usesCustomKeyboard(from message: WKScriptMessage) -> Bool {
+            guard let body = message.body as? [String: Any],
+                  let usesCustomKeyboard = body["usesCustomKeyboard"] as? Bool
+            else {
+                return browserStore.customKeyboardEnabled
+            }
+
+            return usesCustomKeyboard
         }
 
         func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
@@ -421,6 +450,12 @@ private struct RuntimePreferenceState: Equatable {
     let isMutedGlobal: Bool
     let confirmNavigation: Bool
     let customKeyboardEnabled: Bool
+    let shouldInterceptSystemKeyboardForGuide: Bool
+}
+
+struct WebInputStateChange: Equatable {
+    let isFocused: Bool
+    let usesCustomKeyboard: Bool
 }
 
 struct CancelledExternalNavigationRecoveryContext: Equatable {

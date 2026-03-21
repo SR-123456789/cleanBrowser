@@ -4,43 +4,162 @@ enum WebViewJS {
     static let inputHandlerScript: String = """
         (function() {
             var focusedElement = null;
+            window.__lastFocusedEditableElement = null;
+            window.__guideInterceptionTarget = null;
+            window.__guideRequestPending = false;
 
             if (typeof window.__useCustomKeyboard === 'undefined') {
                 window.__useCustomKeyboard = false;
             }
+            if (typeof window.__shouldInterceptSystemKeyboardForGuide === 'undefined') {
+                window.__shouldInterceptSystemKeyboardForGuide = false;
+            }
+
+            function isEditableTarget(target) {
+                return !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
+            }
+
+            function postInputState(name, usesCustomKeyboard) {
+                try {
+                    if (!window.webkit || !window.webkit.messageHandlers || !window.webkit.messageHandlers[name]) {
+                        return;
+                    }
+                    window.webkit.messageHandlers[name].postMessage({
+                        usesCustomKeyboard: !!usesCustomKeyboard
+                    });
+                } catch (_) {}
+            }
+
+            function prepareGuideInterception(target) {
+                if (!target || !isEditableTarget(target)) {
+                    return;
+                }
+
+                window.__guideInterceptionTarget = target;
+                window.__lastFocusedEditableElement = target;
+                target.setAttribute('readonly', 'readonly');
+                target.setAttribute('inputmode', 'none');
+                target.style.caretColor = 'transparent';
+            }
+
+            function clearGuideInterception() {
+                try {
+                    var target = window.__guideInterceptionTarget || window.__lastFocusedEditableElement;
+                    window.__guideRequestPending = false;
+                    window.__guideInterceptionTarget = null;
+
+                    if (!target || !isEditableTarget(target)) {
+                        return;
+                    }
+
+                    target.removeAttribute('readonly');
+                    target.removeAttribute('inputmode');
+                    target.style.caretColor = '';
+                } catch (_) {}
+            }
+
+            function shouldInterceptSystemKeyboardGuide(target) {
+                return isEditableTarget(target)
+                    && !window.__useCustomKeyboard
+                    && !!window.__shouldInterceptSystemKeyboardForGuide;
+            }
+
+            function requestKeyboardGuide(target) {
+                try {
+                    if (!shouldInterceptSystemKeyboardGuide(target) || window.__guideRequestPending) {
+                        return;
+                    }
+
+                    prepareGuideInterception(target);
+                    window.__guideRequestPending = true;
+
+                    if (!window.webkit || !window.webkit.messageHandlers || !window.webkit.messageHandlers.inputGuideRequested) {
+                        return;
+                    }
+
+                    window.webkit.messageHandlers.inputGuideRequested.postMessage('guide');
+                } catch (_) {}
+            }
+
+            function interceptGuideTrigger(event) {
+                try {
+                    const target = event.target && event.target.closest
+                        ? event.target.closest('input, textarea')
+                        : event.target;
+
+                    if (!shouldInterceptSystemKeyboardGuide(target)) {
+                        return false;
+                    }
+
+                    prepareGuideInterception(target);
+
+                    if (typeof event.preventDefault === 'function') {
+                        event.preventDefault();
+                    }
+                    if (typeof event.stopPropagation === 'function') {
+                        event.stopPropagation();
+                    }
+                    if (typeof event.stopImmediatePropagation === 'function') {
+                        event.stopImmediatePropagation();
+                    }
+
+                    requestKeyboardGuide(target);
+                    if (typeof target.blur === 'function') {
+                        target.blur();
+                    }
+                    return true;
+                } catch (_) {}
+                return false;
+            }
+
+            document.addEventListener('pointerdown', interceptGuideTrigger, true);
+            document.addEventListener('touchstart', interceptGuideTrigger, true);
+            document.addEventListener('mousedown', interceptGuideTrigger, true);
 
             document.addEventListener('focusin', function(event) {
                 try {
                     const target = event.target;
-                    if (!(target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
+                    if (!isEditableTarget(target)) {
                         return;
                     }
 
-                    if (!window.__useCustomKeyboard) {
-                        focusedElement = null;
+                    if (shouldInterceptSystemKeyboardGuide(target)) {
+                        prepareGuideInterception(target);
+                        requestKeyboardGuide(target);
+                        setTimeout(function() {
+                            try {
+                                if (typeof target.blur === 'function') {
+                                    target.blur();
+                                }
+                            } catch (_) {}
+                        }, 0);
                         return;
                     }
 
                     focusedElement = target;
+                    window.__lastFocusedEditableElement = target;
+                    clearGuideInterception();
+
+                    if (!window.__useCustomKeyboard) {
+                        postInputState('inputFocused', false);
+                        return;
+                    }
+
                     target.setAttribute('readonly', 'readonly');
                     target.setAttribute('inputmode', 'none');
                     target.style.caretColor = 'transparent';
-                    window.webkit.messageHandlers.inputFocused.postMessage('focused');
+                    postInputState('inputFocused', true);
                 } catch (_) {}
             });
 
             document.addEventListener('focusout', function(event) {
                 try {
-                    if (!window.__useCustomKeyboard) {
-                        return;
-                    }
-
                     const target = event.target;
-                    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+                    if (isEditableTarget(target)) {
                         if (focusedElement === target) {
                             focusedElement = null;
                         }
-                        window.webkit.messageHandlers.inputBlurred.postMessage('blurred');
+                        postInputState('inputBlurred', window.__useCustomKeyboard);
                     }
                 } catch (_) {}
             });
@@ -386,8 +505,73 @@ enum WebViewJS {
         """
     }
 
-    static let restoreNativeKeyboardScript: String = """
-        (function(){ try{ var el = document.activeElement; if(el && (el.tagName==='INPUT' || el.tagName==='TEXTAREA')){ el.removeAttribute('readonly'); el.removeAttribute('inputmode'); el.style.caretColor=''; el.focus(); } }catch(e){} })();
+            static let restoreNativeKeyboardScript: String = """
+        (function(){ try{
+            window.__guideRequestPending = false;
+            window.__guideInterceptionTarget = null;
+            var el = document.activeElement;
+            if(el && (el.tagName==='INPUT' || el.tagName==='TEXTAREA')){
+                el.removeAttribute('readonly');
+                el.removeAttribute('inputmode');
+                el.style.caretColor='';
+                el.focus();
+            }
+        }catch(e){} })();
+    """
+
+    static let focusLastEditableElementScript: String = """
+        (function(){ try{
+            window.__guideRequestPending = false;
+            window.__guideInterceptionTarget = null;
+            var el = window.__lastFocusedEditableElement;
+            if(!el || !el.isConnected || (el.tagName!=='INPUT' && el.tagName!=='TEXTAREA')) {
+                return;
+            }
+
+            el.removeAttribute('readonly');
+            el.removeAttribute('inputmode');
+            el.style.caretColor = '';
+
+            if (typeof el.focus === 'function') {
+                el.focus();
+            }
+        }catch(e){} })();
+    """
+
+    static let activateCustomKeyboardScript: String = """
+        (function(){ try{
+            window.__guideRequestPending = false;
+            window.__useCustomKeyboard = true;
+            var el = document.activeElement;
+            if(!el || (el.tagName!=='INPUT' && el.tagName!=='TEXTAREA')) {
+                el = window.__guideInterceptionTarget || window.__lastFocusedEditableElement;
+            }
+            if(!el || !el.isConnected || (el.tagName!=='INPUT' && el.tagName!=='TEXTAREA')) {
+                return;
+            }
+
+            window.__guideInterceptionTarget = null;
+            el.setAttribute('readonly', 'readonly');
+            el.setAttribute('inputmode', 'none');
+            el.style.caretColor = 'transparent';
+
+            if (typeof el.blur === 'function') {
+                el.blur();
+            }
+
+            setTimeout(function() {
+                try {
+                    if (typeof el.focus === 'function') {
+                        el.focus();
+                    }
+                    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.inputFocused) {
+                        window.webkit.messageHandlers.inputFocused.postMessage({
+                            usesCustomKeyboard: true
+                        });
+                    }
+                } catch (_) {}
+            }, 16);
+        }catch(e){} })();
     """
 
     static let blurActiveElementScript: String = """

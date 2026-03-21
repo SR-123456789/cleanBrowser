@@ -6,6 +6,7 @@ struct BrowserView: View {
     @StateObject private var settingsViewModel: SettingsViewModel
     @StateObject private var tabOverviewViewModel: TabOverviewViewModel
     @StateObject private var dailyInterstitialGateViewModel: DailyInterstitialGateViewModel
+    @State private var pendingSoundDetectorResumeTask: Task<Void, Never>?
     private let pinService: any PINManaging
     private let soundDetector: SoundDetector
 
@@ -17,7 +18,9 @@ struct BrowserView: View {
     ) {
         self.pinService = pinService
         self.soundDetector = soundDetector
-        _viewModel = StateObject(wrappedValue: BrowserViewModel(browserStore: browserStore))
+        _viewModel = StateObject(
+            wrappedValue: BrowserViewModel(browserStore: browserStore, analytics: analyticsManager)
+        )
         _settingsViewModel = StateObject(
             wrappedValue: SettingsViewModel(browserStore: browserStore, soundDetector: soundDetector)
         )
@@ -52,7 +55,8 @@ struct BrowserView: View {
                     WebViewRepresentable(
                         tab: activeTab,
                         browserStore: viewModel.browserStore,
-                        onKeyboardVisibilityChanged: viewModel.setKeyboardVisible
+                        onInputStateChanged: viewModel.handleWebInputStateChange,
+                        onSystemKeyboardGuideRequested: viewModel.handleSystemKeyboardGuideRequested
                     )
                     .id(activeTab.id)
                     .ignoresSafeArea(.keyboard)
@@ -68,6 +72,8 @@ struct BrowserView: View {
                     .transition(.opacity.combined(with: .move(edge: .bottom)))
                 }
             }
+            .opacity(dailyInterstitialGateViewModel.isAdPresenting ? 0.01 : 1)
+            .allowsHitTesting(!dailyInterstitialGateViewModel.isAdPresenting)
             .background {
                 WindowTapSpyView(
                     isEnabled: dailyInterstitialGateViewModel.shouldTrackScreenTaps
@@ -90,8 +96,27 @@ struct BrowserView: View {
                 )
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
+
+            if viewModel.showCustomKeyboardGuide {
+                Color.black.opacity(0.18)
+                    .ignoresSafeArea()
+                    .transition(.opacity)
+
+                VStack {
+                    Spacer()
+
+                    CustomKeyboardGuideCard(
+                        onEnable: viewModel.enableCustomKeyboardFromGuide,
+                        onDismiss: viewModel.dismissCustomKeyboardGuide
+                    )
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 16)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
         }
         .animation(.easeInOut(duration: 0.25), value: viewModel.isKeyboardVisible)
+        .animation(.spring(response: 0.36, dampingFraction: 0.9), value: viewModel.showCustomKeyboardGuide)
         .navigationBarTitleDisplayMode(.inline)
         .navigationTitle(viewModel.navigationTitle)
         .navigationBarHidden(true)
@@ -117,6 +142,7 @@ struct BrowserView: View {
             dailyInterstitialGateViewModel.prepareIfNeeded(
                 canShowPersonalizedAds: attManager.canShowPersonalizedAds
             )
+            viewModel.handleModalPresentationChanged()
         }
         .onChange(of: attManager.canShowPersonalizedAds) { _, canShowPersonalizedAds in
             dailyInterstitialGateViewModel.prepareIfNeeded(
@@ -124,11 +150,25 @@ struct BrowserView: View {
             )
         }
         .onChange(of: dailyInterstitialGateViewModel.isAdPresenting) { _, isAdPresenting in
+            pendingSoundDetectorResumeTask?.cancel()
+            viewModel.handleInterstitialPresentationChanged(isAdPresenting)
+
             if isAdPresenting {
                 soundDetector.suspendTemporarily()
             } else {
-                soundDetector.resumeTemporarily()
+                pendingSoundDetectorResumeTask = Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(450))
+                    guard !Task.isCancelled else { return }
+                    soundDetector.resumeTemporarily()
+                }
             }
+        }
+        .onDisappear {
+            pendingSoundDetectorResumeTask?.cancel()
+            viewModel.handleInterstitialPresentationChanged(false)
+        }
+        .onChange(of: viewModel.isModalPresented) { _, _ in
+            viewModel.handleModalPresentationChanged()
         }
     }
 }

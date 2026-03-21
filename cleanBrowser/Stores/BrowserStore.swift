@@ -4,6 +4,7 @@ import WebKit
 @MainActor
 final class BrowserStore: ObservableObject {
     @Published private(set) var tabs: [BrowserTab]
+    @Published private(set) var areWebViewsSuspendedForInterstitial = false
     @Published var isMutedGlobal: Bool {
         didSet {
             guard !isRestoringState else { return }
@@ -27,16 +28,22 @@ final class BrowserStore: ObservableObject {
     @Published var customKeyboardEnabled: Bool {
         didSet {
             guard !isRestoringState else { return }
+            if customKeyboardEnabled {
+                acknowledgeCustomKeyboardGuideIfNeeded(persist: false)
+            }
             propagateCustomKeyboardPreference()
             persistSession()
         }
     }
+    @Published private(set) var systemKeyboardUseCount: Int
+    @Published private(set) var hasAcknowledgedCustomKeyboardGuide: Bool
 
     private let persistence: any BrowserSessionPersisting
     private let persistDebounceInterval: TimeInterval
     private let scheduleDelayedWork: @MainActor (TimeInterval, DispatchWorkItem) -> Void
     private var isRestoringState = false
     private var pendingPersistWorkItem: DispatchWorkItem?
+    private var isCustomKeyboardGuidePresentationActive = false
 
     init(
         persistence: any BrowserSessionPersisting = UserDefaultsBrowserSessionPersistence(),
@@ -58,6 +65,8 @@ final class BrowserStore: ObservableObject {
         self.isMutedGlobal = state.isMutedGlobal
         self.confirmNavigation = state.confirmNavigation
         self.customKeyboardEnabled = state.customKeyboardEnabled
+        self.systemKeyboardUseCount = state.systemKeyboardUseCount
+        self.hasAcknowledgedCustomKeyboardGuide = state.hasAcknowledgedCustomKeyboardGuide
         self.activeTabIndex = 0
         self.activeTab = nil
 
@@ -137,6 +146,10 @@ final class BrowserStore: ObservableObject {
         let customKeyboardJS = "window.__useCustomKeyboard = \(customKeyboardEnabled ? "true" : "false");"
         webView.evaluateJavaScript(customKeyboardJS, completionHandler: nil)
 
+        let guideInterceptionJS =
+            "window.__shouldInterceptSystemKeyboardForGuide = \(shouldInterceptSystemKeyboardGuideAtRuntime ? "true" : "false");"
+        webView.evaluateJavaScript(guideInterceptionJS, completionHandler: nil)
+
         if !customKeyboardEnabled {
             webView.evaluateJavaScript(WebViewJS.restoreNativeKeyboardScript, completionHandler: nil)
         }
@@ -160,6 +173,56 @@ final class BrowserStore: ObservableObject {
         persistSession()
     }
 
+    var shouldSuggestCustomKeyboardGuide: Bool {
+        !customKeyboardEnabled
+            && !hasAcknowledgedCustomKeyboardGuide
+            && systemKeyboardUseCount >= 1
+    }
+
+    func recordSystemKeyboardUse() {
+        guard !customKeyboardEnabled, !hasAcknowledgedCustomKeyboardGuide else { return }
+        systemKeyboardUseCount += 1
+        propagateKeyboardPreferences()
+        persistSession()
+    }
+
+    func acknowledgeCustomKeyboardGuide() {
+        acknowledgeCustomKeyboardGuideIfNeeded()
+    }
+
+    func enableCustomKeyboard() {
+        customKeyboardEnabled = true
+    }
+
+    func beginCustomKeyboardGuidePresentation() {
+        isCustomKeyboardGuidePresentationActive = true
+        acknowledgeCustomKeyboardGuideIfNeeded()
+    }
+
+    func finishCustomKeyboardGuidePresentation() {
+        guard isCustomKeyboardGuidePresentationActive else { return }
+        isCustomKeyboardGuidePresentationActive = false
+        propagateKeyboardPreferences()
+    }
+
+    func setWebViewsSuspendedForInterstitial(_ suspended: Bool) {
+        guard areWebViewsSuspendedForInterstitial != suspended else { return }
+
+        areWebViewsSuspendedForInterstitial = suspended
+
+        for tab in tabs {
+            guard let webView = tab.webView else { continue }
+
+            if suspended {
+                webView.evaluateJavaScript(WebViewJS.blurActiveElementScript, completionHandler: nil)
+            }
+
+            webView.isUserInteractionEnabled = !suspended
+            webView.scrollView.isScrollEnabled = !suspended
+            webView.setAllMediaPlaybackSuspended(suspended, completionHandler: nil)
+        }
+    }
+
     private func restoreActiveTabIndex(from storedIndex: Int) {
         isRestoringState = true
         activeTabIndex = min(max(storedIndex, 0), tabs.count - 1)
@@ -177,7 +240,9 @@ final class BrowserStore: ObservableObject {
             activeTabIndex: activeTabIndex,
             confirmNavigation: confirmNavigation,
             isMutedGlobal: isMutedGlobal,
-            customKeyboardEnabled: customKeyboardEnabled
+            customKeyboardEnabled: customKeyboardEnabled,
+            systemKeyboardUseCount: systemKeyboardUseCount,
+            hasAcknowledgedCustomKeyboardGuide: hasAcknowledgedCustomKeyboardGuide
         )
         persistence.save(state)
     }
@@ -208,14 +273,34 @@ final class BrowserStore: ObservableObject {
 
     private func propagateCustomKeyboardPreference() {
         let script = "window.__useCustomKeyboard = \(customKeyboardEnabled ? "true" : "false");"
+        let guideScript =
+            "window.__shouldInterceptSystemKeyboardForGuide = \(shouldInterceptSystemKeyboardGuideAtRuntime ? "true" : "false");"
         for tab in tabs {
             tab.webView?.evaluateJavaScript(script, completionHandler: nil)
+            tab.webView?.evaluateJavaScript(guideScript, completionHandler: nil)
         }
+    }
+
+    private func propagateKeyboardPreferences() {
+        propagateCustomKeyboardPreference()
     }
 
     private func applyInitialMuteState() {
         guard isMutedGlobal else { return }
         tabs.forEach { $0.setMutedIfNeeded(true) }
+    }
+
+    private var shouldInterceptSystemKeyboardGuideAtRuntime: Bool {
+        !customKeyboardEnabled && (shouldSuggestCustomKeyboardGuide || isCustomKeyboardGuidePresentationActive)
+    }
+
+    private func acknowledgeCustomKeyboardGuideIfNeeded(persist: Bool = true) {
+        guard !hasAcknowledgedCustomKeyboardGuide else { return }
+        hasAcknowledgedCustomKeyboardGuide = true
+        propagateKeyboardPreferences()
+        if persist {
+            persistSession()
+        }
     }
 
     private func isSearchEngineHost(_ host: String?) -> Bool {

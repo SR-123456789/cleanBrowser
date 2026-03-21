@@ -5,16 +5,24 @@ import SwiftUI
 @MainActor
 final class BrowserViewModel: ObservableObject {
     @Published var isKeyboardVisible = false
+    @Published var showCustomKeyboardGuide = false
     @Published var showPINSettings = false
     @Published var showSettingsSheet = false
     @Published var showTabOverview = false
 
     let browserStore: BrowserStore
 
+    private let analytics: any AnalyticsTracking
     private var cancellables = Set<AnyCancellable>()
+    private var isSystemKeyboardSessionActive = false
+    private var isCustomKeyboardGuidePending = false
 
-    init(browserStore: BrowserStore) {
+    init(
+        browserStore: BrowserStore,
+        analytics: any AnalyticsTracking = NoopAnalyticsManager()
+    ) {
         self.browserStore = browserStore
+        self.analytics = analytics
 
         browserStore.objectWillChange
             .receive(on: DispatchQueue.main)
@@ -27,9 +35,14 @@ final class BrowserViewModel: ObservableObject {
             .removeDuplicates()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] isEnabled in
+                guard let self else { return }
                 if !isEnabled {
-                    self?.isKeyboardVisible = false
+                    self.isKeyboardVisible = false
+                    return
                 }
+
+                self.showCustomKeyboardGuide = false
+                self.isCustomKeyboardGuidePending = false
             }
             .store(in: &cancellables)
     }
@@ -58,7 +71,59 @@ final class BrowserViewModel: ObservableObject {
         showPINSettings || showSettingsSheet || showTabOverview
     }
 
-    func setKeyboardVisible(_ isVisible: Bool) {
+    func handleWebInputStateChange(_ change: WebInputStateChange) {
+        if change.usesCustomKeyboard {
+            isSystemKeyboardSessionActive = false
+            setCustomKeyboardVisible(change.isFocused)
+            return
+        }
+
+        isKeyboardVisible = false
+
+        if change.isFocused {
+            if !isSystemKeyboardSessionActive {
+                browserStore.recordSystemKeyboardUse()
+                isSystemKeyboardSessionActive = true
+            }
+            return
+        }
+
+        isSystemKeyboardSessionActive = false
+    }
+
+    func handleSystemKeyboardGuideRequested() {
+        guard browserStore.shouldSuggestCustomKeyboardGuide else { return }
+        isSystemKeyboardSessionActive = false
+        isCustomKeyboardGuidePending = true
+        presentCustomKeyboardGuideIfPossible()
+    }
+
+    func handleModalPresentationChanged() {
+        presentCustomKeyboardGuideIfPossible()
+    }
+
+    func dismissCustomKeyboardGuide() {
+        analytics.trackKeyboardChoiceSelected(.system)
+        browserStore.finishCustomKeyboardGuidePresentation()
+        isCustomKeyboardGuidePending = false
+        withAnimation(.easeInOut(duration: 0.2)) {
+            showCustomKeyboardGuide = false
+        }
+        activeTab?.webView?.evaluateJavaScript(WebViewJS.focusLastEditableElementScript, completionHandler: nil)
+    }
+
+    func enableCustomKeyboardFromGuide() {
+        analytics.trackKeyboardChoiceSelected(.custom)
+        browserStore.finishCustomKeyboardGuidePresentation()
+        browserStore.enableCustomKeyboard()
+        isCustomKeyboardGuidePending = false
+        withAnimation(.easeInOut(duration: 0.2)) {
+            showCustomKeyboardGuide = false
+        }
+        activeTab?.webView?.evaluateJavaScript(WebViewJS.activateCustomKeyboardScript, completionHandler: nil)
+    }
+
+    private func setCustomKeyboardVisible(_ isVisible: Bool) {
         guard browserStore.customKeyboardEnabled else {
             isKeyboardVisible = false
             return
@@ -87,6 +152,14 @@ final class BrowserViewModel: ObservableObject {
         activeTab?.webView?.evaluateJavaScript(WebViewJS.restoreNativeKeyboardScript, completionHandler: nil)
     }
 
+    func handleInterstitialPresentationChanged(_ isPresenting: Bool) {
+        if isPresenting {
+            dismissCustomKeyboard()
+        }
+
+        browserStore.setWebViewsSuspendedForInterstitial(isPresenting)
+    }
+
     func beginAddressEditing() {
         isKeyboardVisible = false
         activeTab?.webView?.evaluateJavaScript(WebViewJS.blurActiveElementScript, completionHandler: nil)
@@ -108,5 +181,22 @@ final class BrowserViewModel: ObservableObject {
 
     func toggleMute() {
         browserStore.toggleGlobalMute()
+    }
+
+    private func presentCustomKeyboardGuideIfPossible() {
+        guard isCustomKeyboardGuidePending,
+              !showCustomKeyboardGuide,
+              !isModalPresented,
+              browserStore.shouldSuggestCustomKeyboardGuide
+        else {
+            return
+        }
+
+        browserStore.beginCustomKeyboardGuidePresentation()
+        analytics.trackKeyboardChoiceDialogShown()
+        withAnimation(.spring(response: 0.36, dampingFraction: 0.9)) {
+            showCustomKeyboardGuide = true
+        }
+        isCustomKeyboardGuidePending = false
     }
 }

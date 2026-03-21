@@ -35,7 +35,7 @@ struct SettingsSheet: View {
                         }
                         Image(systemName: "questionmark.circle")
                             .foregroundColor(.secondary)
-                            .help("サイトの入力時に独自のキーボードを使用します")
+                            .help("サイトの入力時に独自のキーボードを使用します。オフにすればいつでもiOS標準キーボードに戻せます")
                     }
                 }
                 Section(header: Text("足音検知")) {

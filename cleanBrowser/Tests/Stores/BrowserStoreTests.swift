@@ -9,7 +9,9 @@ final class BrowserStoreTests: XCTestCase {
             activeTabIndex: 0,
             confirmNavigation: true,
             isMutedGlobal: false,
-            customKeyboardEnabled: false
+            customKeyboardEnabled: false,
+            systemKeyboardUseCount: 0,
+            hasAcknowledgedCustomKeyboardGuide: false
         ))
 
         XCTAssertEqual(store.tabs.count, 1)
@@ -26,7 +28,9 @@ final class BrowserStoreTests: XCTestCase {
             activeTabIndex: 99,
             confirmNavigation: true,
             isMutedGlobal: false,
-            customKeyboardEnabled: false
+            customKeyboardEnabled: false,
+            systemKeyboardUseCount: 0,
+            hasAcknowledgedCustomKeyboardGuide: false
         ))
 
         XCTAssertEqual(store.activeTabIndex, 1)
@@ -77,7 +81,9 @@ final class BrowserStoreTests: XCTestCase {
             activeTabIndex: 0,
             confirmNavigation: true,
             isMutedGlobal: false,
-            customKeyboardEnabled: false
+            customKeyboardEnabled: false,
+            systemKeyboardUseCount: 0,
+            hasAcknowledgedCustomKeyboardGuide: false
         ))
         var scheduledWorkItems: [DispatchWorkItem] = []
         let store = BrowserStore(
@@ -110,6 +116,56 @@ final class BrowserStoreTests: XCTestCase {
 
         XCTAssertTrue(store.isMutedGlobal)
         XCTAssertTrue(store.tabs.allSatisfy(\.isMuted))
+    }
+
+    func test_recordSystemKeyboardUse_incrementsCounterAndPersists() {
+        let (store, persistence) = makeStore()
+
+        store.recordSystemKeyboardUse()
+
+        XCTAssertEqual(store.systemKeyboardUseCount, 1)
+        XCTAssertTrue(store.shouldSuggestCustomKeyboardGuide)
+        XCTAssertEqual(persistence.savedStates.last?.systemKeyboardUseCount, 1)
+        XCTAssertEqual(persistence.savedStates.last?.hasAcknowledgedCustomKeyboardGuide, false)
+    }
+
+    func test_acknowledgeCustomKeyboardGuide_stopsFurtherPrompting() {
+        let (store, persistence) = makeStore(state: .init(
+            tabs: [.init(url: BrowserURLResolver.defaultHomePage, title: "新しいタブ")],
+            activeTabIndex: 0,
+            confirmNavigation: true,
+            isMutedGlobal: false,
+            customKeyboardEnabled: false,
+            systemKeyboardUseCount: 1,
+            hasAcknowledgedCustomKeyboardGuide: false
+        ))
+
+        store.acknowledgeCustomKeyboardGuide()
+        store.recordSystemKeyboardUse()
+
+        XCTAssertTrue(store.hasAcknowledgedCustomKeyboardGuide)
+        XCTAssertFalse(store.shouldSuggestCustomKeyboardGuide)
+        XCTAssertEqual(store.systemKeyboardUseCount, 1)
+        XCTAssertEqual(persistence.savedStates.last?.hasAcknowledgedCustomKeyboardGuide, true)
+    }
+
+    func test_enablingCustomKeyboard_marksGuideAsAcknowledged() {
+        let (store, persistence) = makeStore(state: .init(
+            tabs: [.init(url: BrowserURLResolver.defaultHomePage, title: "新しいタブ")],
+            activeTabIndex: 0,
+            confirmNavigation: true,
+            isMutedGlobal: false,
+            customKeyboardEnabled: false,
+            systemKeyboardUseCount: 1,
+            hasAcknowledgedCustomKeyboardGuide: false
+        ))
+
+        store.enableCustomKeyboard()
+
+        XCTAssertTrue(store.customKeyboardEnabled)
+        XCTAssertTrue(store.hasAcknowledgedCustomKeyboardGuide)
+        XCTAssertEqual(persistence.savedStates.last?.customKeyboardEnabled, true)
+        XCTAssertEqual(persistence.savedStates.last?.hasAcknowledgedCustomKeyboardGuide, true)
     }
 
     func test_shouldConfirmNavigation_skipsSameHostAndSearchEngineSources() {
@@ -178,7 +234,9 @@ final class BrowserStoreTests: XCTestCase {
             activeTabIndex: 0,
             confirmNavigation: true,
             isMutedGlobal: false,
-            customKeyboardEnabled: false
+            customKeyboardEnabled: false,
+            systemKeyboardUseCount: 0,
+            hasAcknowledgedCustomKeyboardGuide: false
         )
     ) -> (BrowserStore, BrowserSessionPersistenceSpy) {
         let persistence = BrowserSessionPersistenceSpy(loadedState: state)

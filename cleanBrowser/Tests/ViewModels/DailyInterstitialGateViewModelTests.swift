@@ -293,7 +293,7 @@ private final class AnalyticsTrackerStub: AnalyticsTracking {
     private(set) var adDialogShownCount = 0
     private(set) var adDialogViewedCount = 0
 
-    func trackAppOpened() {
+    func trackAppOpened(appVersion: String, keyboardMode: AnalyticsKeyboardMode) {
         appOpenedCount += 1
     }
 
@@ -304,4 +304,8 @@ private final class AnalyticsTrackerStub: AnalyticsTracking {
     func trackAdDialogViewed() {
         adDialogViewedCount += 1
     }
+
+    func trackKeyboardChoiceDialogShown() {}
+
+    func trackKeyboardChoiceSelected(_ keyboardMode: AnalyticsKeyboardMode) {}
 }

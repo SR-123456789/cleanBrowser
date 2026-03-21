@@ -84,6 +84,7 @@ final class BrowserTab: ObservableObject, Identifiable {
         let userContentController = webView.configuration.userContentController
         userContentController.removeScriptMessageHandler(forName: "inputFocused")
         userContentController.removeScriptMessageHandler(forName: "inputBlurred")
+        userContentController.removeScriptMessageHandler(forName: "inputGuideRequested")
         userContentController.removeScriptMessageHandler(forName: "confirmNav")
         webView.navigationDelegate = nil
         webView.uiDelegate = nil

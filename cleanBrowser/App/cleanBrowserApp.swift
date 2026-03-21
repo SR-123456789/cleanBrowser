@@ -19,7 +19,10 @@ struct cleanBrowserApp: App {
         _soundDetector = StateObject(wrappedValue: soundDetector)
         self.pinService = pinService
         self.analyticsManager = analyticsManager
-        analyticsManager.trackAppOpened()
+        analyticsManager.trackAppOpened(
+            appVersion: Bundle.main.cleanBrowserAppVersion,
+            keyboardMode: AnalyticsKeyboardMode(customKeyboardEnabled: browserStore.customKeyboardEnabled)
+        )
     }
 
     var body: some Scene {
