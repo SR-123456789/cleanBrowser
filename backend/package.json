@@ -1,0 +1,20 @@
+{
+  "name": "cleanbrowser-backend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch cmd/api/main.ts",
+    "start": "node cmd/api/main.ts",
+    "test": "node --test $(find test -name '*.test.ts' -print)"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.14.4",
+    "hono": "^4.7.11"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

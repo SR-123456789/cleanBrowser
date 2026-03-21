@@ -1,0 +1,213 @@
+openapi: 3.0.3
+info:
+  title: cleanBrowser Public API
+  version: 0.1.0
+  description: |
+    cleanBrowser 向けの公開APIです。
+    `startup` と `ads/{adID}/visibility` は、現時点ではDB接続を使わず、
+    バックエンド内の固定値リポジトリを参照してレスポンスを返します。
+servers:
+  - url: http://localhost:4782
+paths:
+  /healthz:
+    get:
+      summary: ヘルスチェック
+      description: API サーバーの稼働確認を返します。
+      responses:
+        '200':
+          description: サーバーが正常に稼働中
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: ok
+  /api/v1/public/startup:
+    get:
+      summary: アプリ起動時の初期情報を取得する
+      description: アプリ更新状態と、起動時に必要な AdMob 広告表示可否一覧を返します。
+      security:
+        - PublicApiKeyAuth: []
+      parameters:
+        - in: query
+          name: appVersion
+          required: true
+          description: 現在のアプリバージョン
+          schema:
+            type: string
+            example: 1.0.0
+      responses:
+        '200':
+          description: 起動時データの取得に成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StartupResponse'
+              example:
+                update:
+                  mustUpdate: true
+                  shouldUpdate: true
+                  repeatUpdatePrompt: true
+                  updateLink: https://apps.apple.com/app/id1234567890
+                  message: このバージョンはサポート対象外です。App Storeから最新版へ更新してください。
+                ads:
+                  - adID: daily_interstitial
+                    isShow: true
+        '400':
+          description: リクエスト不正
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missingAppVersion:
+                  value:
+                    error: appVersion is required
+        '401':
+          description: API キー不正
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: invalid api key
+        '500':
+          description: サーバー内部エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: internal server error
+  /api/v1/public/ads/{adID}/visibility:
+    get:
+      summary: 広告表示可否を取得する
+      description: adID を受け取り、その広告を表示するかどうかを返します。
+      security:
+        - PublicApiKeyAuth: []
+      parameters:
+        - in: path
+          name: adID
+          required: true
+          description: 広告ID
+          schema:
+            type: string
+            example: daily_interstitial
+      responses:
+        '200':
+          description: 表示可否の取得に成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdVisibilityResponse'
+              examples:
+                show:
+                  value:
+                    isShow: true
+                hide:
+                  value:
+                    isShow: false
+        '400':
+          description: リクエスト不正
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: adID is required
+        '401':
+          description: API キー不正
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: invalid api key
+        '500':
+          description: サーバー内部エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: internal server error
+components:
+  securitySchemes:
+    PublicApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          example: ok
+    UpdateCheckResponse:
+      type: object
+      required:
+        - mustUpdate
+        - shouldUpdate
+        - repeatUpdatePrompt
+        - updateLink
+        - message
+      properties:
+        mustUpdate:
+          type: boolean
+          description: 強制アップデートが必要か
+        shouldUpdate:
+          type: boolean
+          description: アップデート推奨か
+        repeatUpdatePrompt:
+          type: boolean
+          description: アップデート案内を繰り返し表示するか
+        updateLink:
+          type: string
+          description: App Store の更新リンク
+          example: https://apps.apple.com/app/id1234567890
+        message:
+          type: string
+          description: クライアント表示用メッセージ
+    AdVisibilityResponse:
+      type: object
+      required:
+        - isShow
+      properties:
+        isShow:
+          type: boolean
+          description: 広告を表示するかどうか
+    StartupResponse:
+      type: object
+      required:
+        - update
+        - ads
+      properties:
+        update:
+          $ref: '#/components/schemas/UpdateCheckResponse'
+        ads:
+          type: array
+          items:
+            $ref: '#/components/schemas/StartupAdVisibilityResponse'
+    StartupAdVisibilityResponse:
+      type: object
+      required:
+        - adID
+        - isShow
+      properties:
+        adID:
+          type: string
+          description: 起動時に判定した広告ID
+          example: daily_interstitial
+        isShow:
+          type: boolean
+          description: 広告を表示するかどうか
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
