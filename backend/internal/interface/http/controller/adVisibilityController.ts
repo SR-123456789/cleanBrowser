@@ -15,6 +15,7 @@ export class AdVisibilityController {
   async handle(c: Context) {
     const result = await this.#adVisibilityUseCase.execute({
       adId: c.req.param('adID'),
+      appVersion: c.req.query('appVersion') ?? '',
     })
 
     return this.#presenter.present(c, result)

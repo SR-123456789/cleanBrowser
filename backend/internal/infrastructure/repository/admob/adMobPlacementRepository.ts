@@ -8,11 +8,24 @@ type AdMobPlacementRecord = AdMobPlacementProps
 export class AdMobPlacementRepository implements AdMobPlacementRepositoryInterface {
   readonly #records: AdMobPlacementRecord[]
 
-  constructor(records = defaultRecords()) {
-    records.forEach((record) => {
+  constructor(records?: AdMobPlacementRecord[]) {
+    const sourceRecords = records ?? [
+      {
+        id: 'daily_interstitial',
+        name: 'Daily Interstitial',
+        platform: PLATFORM_IOS,
+        status: 'active',
+        minAppVersion: '2.1.3',
+        maxAppVersion: '2.1.3',
+        createdAt: new Date('2026-03-18T00:00:00Z'),
+        updatedAt: new Date('2026-03-18T00:00:00Z'),
+      },
+    ]
+
+    sourceRecords.forEach((record) => {
       AdMobPlacement.reconstruct(record)
     })
-    this.#records = records.map(cloneRecord)
+    this.#records = sourceRecords.map(cloneRecord)
   }
 
   async findById(id: string): Promise<AdMobPlacement> {
@@ -33,27 +46,6 @@ function cloneRecord(record: AdMobPlacementRecord): AdMobPlacementRecord {
     createdAt: new Date(record.createdAt),
     updatedAt: new Date(record.updatedAt),
   }
-}
-
-function defaultRecords(): AdMobPlacementRecord[] {
-  return [
-    {
-      id: 'daily_interstitial',
-      name: 'Daily Interstitial',
-      platform: PLATFORM_IOS,
-      status: 'active',
-      createdAt: new Date('2026-03-18T00:00:00Z'),
-      updatedAt: new Date('2026-03-18T00:00:00Z'),
-    },
-    {
-      id: 'settings_banner',
-      name: 'Settings Banner',
-      platform: PLATFORM_IOS,
-      status: 'inactive',
-      createdAt: new Date('2026-03-18T00:00:00Z'),
-      updatedAt: new Date('2026-03-18T00:00:00Z'),
-    },
-  ]
 }
 
 function cloneDate(value?: Date): Date | undefined {

@@ -28,6 +28,17 @@ npm run dev
 ```
 
 デフォルトでは `:4782` で起動します。
+設定は `backend/.env` と `backend/.env.local` から自動読込します。`.env.local` があれば `.env` を上書きします。
+
+```bash
+cd backend
+cat <<'EOF' > .env
+PUBLIC_API_KEYS=ios-app-key,admin-key
+PORT=4782
+EOF
+
+npm run dev
+```
 
 ## 環境変数
 
@@ -58,7 +69,7 @@ npm run dev
 
 ## リクエスト例
 
-ローカル開発では `PUBLIC_API_KEYS` 未指定時に `dev-public-api-key` が使われます。  
+ローカル開発では `.env` / `.env.local` と環境変数のどちらにも `PUBLIC_API_KEYS` が無いと `dev-public-api-key` が使われます。  
 VS Code の OpenAPI preview 用に、`CORS_ALLOW_ORIGINS` 未指定時は `vscode-webview://*` を許可します。
 
 ### アプリ起動時の初期情報を取得

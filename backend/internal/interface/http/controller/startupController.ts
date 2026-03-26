@@ -22,13 +22,12 @@ export class StartupController {
   }
 
   async handle(c: Context) {
-    const update = await this.#updateCheckUseCase.execute({
-      appVersion: c.req.query('appVersion') ?? '',
-    })
+    const appVersion = c.req.query('appVersion') ?? ''
+    const update = await this.#updateCheckUseCase.execute({ appVersion })
 
     const adVisibilityChecks = await Promise.all(
       STARTUP_AD_IDS.map(async (adID) => {
-        const visibility = await this.#adVisibilityUseCase.execute({ adId: adID })
+        const visibility = await this.#adVisibilityUseCase.execute({ adId: adID, appVersion })
         return {
           adID,
           visibility,

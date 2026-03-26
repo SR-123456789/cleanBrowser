@@ -7,11 +7,11 @@ import { UpdateCheckInteractor } from '../../../../internal/application/usecase/
 test('UpdateCheckInteractor.execute maps update result for client', async () => {
   const interactor = new UpdateCheckInteractor(new AppUpdateRuleRepository())
 
-  const result = await interactor.execute({ appVersion: '0.9.0' })
+  const result = await interactor.execute({ appVersion: '2.1.4' })
 
-  assert.equal(result.mustUpdate, true)
-  assert.equal(result.shouldUpdate, true)
-  assert.equal(result.repeatUpdatePrompt, true)
+  assert.equal(result.mustUpdate, false)
+  assert.equal(result.shouldUpdate, false)
+  assert.equal(result.repeatUpdatePrompt, false)
   assert.equal(result.updateLink, 'https://apps.apple.com/app/id1234567890')
-  assert.equal(result.message, 'このバージョンはサポート対象外です。App Storeから最新版へ更新してください。')
+  assert.equal(result.message, '現在のバージョンは最新です。')
 })

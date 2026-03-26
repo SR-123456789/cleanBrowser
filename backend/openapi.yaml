@@ -82,7 +82,7 @@ paths:
   /api/v1/public/ads/{adID}/visibility:
     get:
       summary: 広告表示可否を取得する
-      description: adID を受け取り、その広告を表示するかどうかを返します。
+      description: adID と appVersion を受け取り、その広告を表示するかどうかを返します。
       security:
         - PublicApiKeyAuth: []
       parameters:
@@ -93,6 +93,13 @@ paths:
           schema:
             type: string
             example: daily_interstitial
+        - in: query
+          name: appVersion
+          required: true
+          description: 現在のアプリバージョン
+          schema:
+            type: string
+            example: 2.1.4
       responses:
         '200':
           description: 表示可否の取得に成功
@@ -113,8 +120,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-              example:
-                error: adID is required
+              examples:
+                missingAdID:
+                  value:
+                    error: adID is required
+                missingAppVersion:
+                  value:
+                    error: appVersion is required
         '401':
           description: API キー不正
           content:

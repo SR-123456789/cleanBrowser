@@ -8,11 +8,28 @@ type AppUpdateRuleRecord = AppUpdateRuleProps
 export class AppUpdateRuleRepository implements AppUpdateRuleRepositoryInterface {
   readonly #records: AppUpdateRuleRecord[]
 
-  constructor(records = defaultRecords()) {
-    records.forEach((record) => {
+  constructor(records?: AppUpdateRuleRecord[]) {
+    const sourceRecords = records ?? [
+      {
+        id: 'ios-2-1-4',
+        platform: PLATFORM_IOS,
+        minVersion: '2.1.4',
+        maxVersion: '2.1.4',
+        mustUpdate: false,
+        shouldUpdate: false,
+        repeatUpdatePrompt: false,
+        storeUrl: 'https://apps.apple.com/app/id1234567890',
+        message: '現在のバージョンは最新です。',
+        status: 'published',
+        createdAt: new Date('2026-03-18T00:00:00Z'),
+        updatedAt: new Date('2026-03-18T00:00:00Z'),
+      },
+    ]
+
+    sourceRecords.forEach((record) => {
       AppUpdateRule.reconstruct(record)
     })
-    this.#records = records.map(cloneRecord)
+    this.#records = sourceRecords.map(cloneRecord)
   }
 
   async findMatchedPublishedRule(platform: Platform, currentVersion: string): Promise<AppUpdateRule | null> {
@@ -59,49 +76,4 @@ function cloneRecord(record: AppUpdateRuleRecord): AppUpdateRuleRecord {
     createdAt: new Date(record.createdAt),
     updatedAt: new Date(record.updatedAt),
   }
-}
-
-function defaultRecords(): AppUpdateRuleRecord[] {
-  return [
-    {
-      id: 'ios-force-update',
-      platform: PLATFORM_IOS,
-      maxVersion: '1.0.0',
-      mustUpdate: true,
-      shouldUpdate: true,
-      repeatUpdatePrompt: true,
-      storeUrl: 'https://apps.apple.com/app/id1234567890',
-      message: 'このバージョンはサポート対象外です。App Storeから最新版へ更新してください。',
-      status: 'published',
-      createdAt: new Date('2026-03-01T00:00:00Z'),
-      updatedAt: new Date('2026-03-01T00:00:00Z'),
-    },
-    {
-      id: 'ios-recommend-update',
-      platform: PLATFORM_IOS,
-      minVersion: '1.0.1',
-      maxVersion: '1.1.9',
-      mustUpdate: false,
-      shouldUpdate: true,
-      repeatUpdatePrompt: false,
-      storeUrl: 'https://apps.apple.com/app/id1234567890',
-      message: '新しいバージョンがあります。App Storeから更新できます。',
-      status: 'published',
-      createdAt: new Date('2026-03-18T00:00:00Z'),
-      updatedAt: new Date('2026-03-18T00:00:00Z'),
-    },
-    {
-      id: 'ios-latest',
-      platform: PLATFORM_IOS,
-      minVersion: '1.2.0',
-      mustUpdate: false,
-      shouldUpdate: false,
-      repeatUpdatePrompt: false,
-      storeUrl: 'https://apps.apple.com/app/id1234567890',
-      message: '現在のバージョンは最新です。',
-      status: 'published',
-      createdAt: new Date('2026-03-18T00:00:00Z'),
-      updatedAt: new Date('2026-03-18T00:00:00Z'),
-    },
-  ]
 }

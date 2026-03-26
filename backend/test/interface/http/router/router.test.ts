@@ -33,7 +33,7 @@ async function parseResponseBody<T>(response: Response): Promise<T> {
 test('router serves startup endpoint', async () => {
   const app = createApp(testConfig())
 
-  const response = await app.request('/api/v1/public/startup?appVersion=0.9.0', {
+  const response = await app.request('/api/v1/public/startup?appVersion=2.1.4', {
     headers: {
       [PUBLIC_API_KEY_HEADER]: 'test-public-api-key',
     },
@@ -41,8 +41,9 @@ test('router serves startup endpoint', async () => {
   const payload = await parseResponseBody<StartupResponseBody>(response)
 
   assert.equal(response.status, 200)
-  assert.equal(payload.update.mustUpdate, true)
-  assert.equal(payload.update.repeatUpdatePrompt, true)
+  assert.equal(payload.update.mustUpdate, false)
+  assert.equal(payload.update.shouldUpdate, false)
+  assert.equal(payload.update.repeatUpdatePrompt, false)
   assert.equal(Array.isArray(payload.ads), true)
   assert.equal(payload.ads.length, 1)
   assert.equal(payload.ads[0].adID, 'daily_interstitial')
@@ -52,7 +53,7 @@ test('router serves startup endpoint', async () => {
 test('router serves ad visibility endpoint', async () => {
   const app = createApp(testConfig())
 
-  const response = await app.request('/api/v1/public/ads/daily_interstitial/visibility', {
+  const response = await app.request('/api/v1/public/ads/daily_interstitial/visibility?appVersion=2.1.4', {
     headers: {
       [PUBLIC_API_KEY_HEADER]: 'test-public-api-key',
     },
@@ -61,6 +62,34 @@ test('router serves ad visibility endpoint', async () => {
 
   assert.equal(response.status, 200)
   assert.equal(payload.isShow, true)
+})
+
+test('router hides ad visibility endpoint when appVersion is out of range', async () => {
+  const app = createApp(testConfig())
+
+  const response = await app.request('/api/v1/public/ads/daily_interstitial/visibility?appVersion=2.1.5', {
+    headers: {
+      [PUBLIC_API_KEY_HEADER]: 'test-public-api-key',
+    },
+  })
+  const payload = await parseResponseBody<AdVisibilityResponseBody>(response)
+
+  assert.equal(response.status, 200)
+  assert.equal(payload.isShow, false)
+})
+
+test('router rejects ad visibility requests without appVersion', async () => {
+  const app = createApp(testConfig())
+
+  const response = await app.request('/api/v1/public/ads/daily_interstitial/visibility', {
+    headers: {
+      [PUBLIC_API_KEY_HEADER]: 'test-public-api-key',
+    },
+  })
+  const payload = await parseResponseBody<ErrorResponseBody>(response)
+
+  assert.equal(response.status, 400)
+  assert.equal(payload.error, 'appVersion is required')
 })
 
 test('router serves health endpoint', async () => {
@@ -76,7 +105,7 @@ test('router serves health endpoint', async () => {
 test('router rejects public requests without api key', async () => {
   const app = createApp(testConfig())
 
-  const response = await app.request('/api/v1/public/startup?appVersion=1.0.0')
+  const response = await app.request('/api/v1/public/startup?appVersion=2.1.4')
   const payload = await parseResponseBody<ErrorResponseBody>(response)
 
   assert.equal(response.status, 401)
@@ -86,7 +115,7 @@ test('router rejects public requests without api key', async () => {
 test('router includes CORS header for allowed origins', async () => {
   const app = createApp(testConfig())
 
-  const response = await app.request('/api/v1/public/startup?appVersion=1.0.0', {
+  const response = await app.request('/api/v1/public/startup?appVersion=2.1.4', {
     headers: {
       Origin: 'http://localhost:3000',
       [PUBLIC_API_KEY_HEADER]: 'test-public-api-key',
@@ -104,7 +133,7 @@ test('router includes CORS header for VS Code webview origins when wildcard is c
     }),
   )
 
-  const response = await app.request('/api/v1/public/startup?appVersion=1.0.0', {
+  const response = await app.request('/api/v1/public/startup?appVersion=2.1.4', {
     headers: {
       Origin: 'vscode-webview://12345abcdef',
       [PUBLIC_API_KEY_HEADER]: 'test-public-api-key',
@@ -134,7 +163,7 @@ test('router handles CORS preflight for public endpoints', async () => {
 test('router omits CORS header for disallowed origins', async () => {
   const app = createApp(testConfig())
 
-  const response = await app.request('/api/v1/public/startup?appVersion=1.0.0', {
+  const response = await app.request('/api/v1/public/startup?appVersion=2.1.4', {
     headers: {
       Origin: 'http://evil.example',
       [PUBLIC_API_KEY_HEADER]: 'test-public-api-key',

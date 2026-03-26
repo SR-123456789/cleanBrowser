@@ -1,8 +1,10 @@
 import type { AdMobPlacementRepositoryInterface } from '../../port/admob/adMobPlacementRepositoryInterface.ts'
 import { isNotFoundError, ValidationError } from '../../../domain/shared/errors.ts'
+import { validateVersion } from '../../../domain/shared/version.ts'
 
 export interface Input {
   adId: string
+  appVersion: string
 }
 
 export interface AdVisibilityResult {
@@ -28,9 +30,16 @@ export class AdVisibilityInteractor implements AdVisibilityUseCase {
       throw new ValidationError('adID is required')
     }
 
+    const appVersion = input.appVersion.trim()
+    if (appVersion === '') {
+      throw new ValidationError('appVersion is required')
+    }
+
+    validateVersion(appVersion)
+
     try {
       const placement = await this.#repo.findById(adId)
-      return { isShow: placement.isVisibleAt(this.#now()) }
+      return { isShow: placement.isVisibleAt(this.#now(), appVersion) }
     } catch (error) {
       if (isNotFoundError(error)) {
         return { isShow: false }

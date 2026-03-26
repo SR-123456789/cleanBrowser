@@ -4,20 +4,19 @@ import test from 'node:test'
 import { PLATFORM_IOS } from '../../../../internal/domain/shared/platform.ts'
 import { AppUpdateRuleRepository } from '../../../../internal/infrastructure/repository/appversion/appUpdateRuleRepository.ts'
 
-test('AppUpdateRuleRepository.findMatchedPublishedRule returns force update rule', async () => {
+test('AppUpdateRuleRepository.findMatchedPublishedRule returns the published 2.1.4 rule', async () => {
   const repository = new AppUpdateRuleRepository()
 
-  const rule = await repository.findMatchedPublishedRule(PLATFORM_IOS, '0.9.0')
+  const rule = await repository.findMatchedPublishedRule(PLATFORM_IOS, '2.1.4')
 
   assert.ok(rule)
-  assert.equal(rule.id, 'ios-force-update')
+  assert.equal(rule.id, 'ios-2-1-4')
 })
 
-test('AppUpdateRuleRepository.findMatchedPublishedRule returns latest rule', async () => {
+test('AppUpdateRuleRepository.findMatchedPublishedRule returns null for other versions', async () => {
   const repository = new AppUpdateRuleRepository()
 
-  const rule = await repository.findMatchedPublishedRule(PLATFORM_IOS, '1.2.0')
+  const rule = await repository.findMatchedPublishedRule(PLATFORM_IOS, '2.1.3')
 
-  assert.ok(rule)
-  assert.equal(rule.id, 'ios-latest')
+  assert.equal(rule, null)
 })
