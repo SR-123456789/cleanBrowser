@@ -7,3 +7,8 @@
 
 BROWSER_INTERSTITIAL_AD_UNIT_ID=
 POSTHOG_PROJECT_TOKEN=
+PUBLIC_API_KEY=
+STARTUP_API_BASE_URL=
+
+// xcconfig では "http://" の "//" がコメント扱いになるので、
+// URL を書くときは "http:/$()/host:port" 形式を使う。

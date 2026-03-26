@@ -226,6 +226,26 @@ final class DailyInterstitialGateViewModelTests: XCTestCase {
 
         XCTAssertEqual(analytics.adDialogViewedCount, 0)
     }
+
+    func test_setStartupVisibility_falseStopsTrackingAndHidesGate() {
+        let store = DailyInterstitialGateStoreStub(
+            state: DailyInterstitialGateState(
+                dayKey: "2026-03-15",
+                tapCount: DailyInterstitialGateState.tapThreshold,
+                lastCompletedDayKey: nil
+            )
+        )
+        let adService = InterstitialAdServiceStub()
+        let sut = DailyInterstitialGateViewModel(stateStore: store, adService: adService)
+
+        adService.sendState(isReady: true, isLoading: false, errorMessage: nil)
+        XCTAssertTrue(sut.isGatePresented)
+
+        sut.setStartupVisibility(false)
+
+        XCTAssertFalse(sut.shouldTrackScreenTaps)
+        XCTAssertFalse(sut.isGatePresented)
+    }
 }
 
 @MainActor

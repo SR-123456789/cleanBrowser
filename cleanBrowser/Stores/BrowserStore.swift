@@ -2,9 +2,15 @@ import SwiftUI
 import WebKit
 
 @MainActor
-final class BrowserStore: ObservableObject {
+protocol StartupAdVisibilityControlling: AnyObject {
+    var isDailyInterstitialVisible: Bool { get set }
+}
+
+@MainActor
+final class BrowserStore: ObservableObject, StartupAdVisibilityControlling {
     @Published private(set) var tabs: [BrowserTab]
     @Published private(set) var areWebViewsSuspendedForInterstitial = false
+    @Published var isDailyInterstitialVisible = false
     @Published var isMutedGlobal: Bool {
         didSet {
             guard !isRestoringState else { return }

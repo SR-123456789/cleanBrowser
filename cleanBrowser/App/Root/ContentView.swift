@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ContentView: View {
+    @Environment(\.openURL) private var openURL
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var viewModel: ContentViewModel
 
@@ -19,12 +20,19 @@ struct ContentView: View {
         self.soundDetector = soundDetector
         self.pinService = pinService
         self.analyticsManager = analyticsManager
-        _viewModel = StateObject(wrappedValue: ContentViewModel(pinService: pinService))
+        _viewModel = StateObject(
+            wrappedValue: ContentViewModel(
+                pinService: pinService,
+                startupAdVisibilityController: browserStore
+            )
+        )
     }
 
     var body: some View {
         ZStack {
             content
+
+            startupUpdateOverlay
 
             if viewModel.isPrivacyShieldVisible {
                 Color.black
@@ -32,11 +40,15 @@ struct ContentView: View {
             }
         }
         .onAppear {
+            viewModel.loadStartupIfNeeded()
             viewModel.handleScenePhase(scenePhase)
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .background {
                 browserStore.persistCurrentSession()
+            }
+            if newPhase == .active {
+                viewModel.loadStartupIfNeeded()
             }
             viewModel.handleScenePhase(newPhase)
         }
@@ -61,6 +73,29 @@ struct ContentView: View {
                 .sheet(isPresented: $viewModel.showPINSettings) {
                     PINSettingsView(pinService: pinService)
                 }
+        }
+    }
+
+    @ViewBuilder
+    private var startupUpdateOverlay: some View {
+        if let startupUpdatePrompt = viewModel.startupUpdatePrompt {
+            StartupUpdateOverlay(
+                prompt: startupUpdatePrompt,
+                onPrimaryAction: {
+                    handleStartupUpdatePrimaryAction(startupUpdatePrompt)
+                },
+                onDismiss: startupUpdatePrompt.isMandatory
+                    ? nil
+                    : { viewModel.dismissStartupUpdatePrompt() }
+            )
+        }
+    }
+
+    private func handleStartupUpdatePrimaryAction(_ prompt: StartupUpdatePrompt) {
+        guard let updateURL = prompt.updateURL else { return }
+        openURL(updateURL)
+        if !prompt.isMandatory {
+            viewModel.dismissStartupUpdatePrompt()
         }
     }
 }

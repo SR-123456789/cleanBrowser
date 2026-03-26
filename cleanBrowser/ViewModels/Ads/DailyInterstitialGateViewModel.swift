@@ -9,6 +9,7 @@ final class DailyInterstitialGateViewModel: ObservableObject {
     @Published private(set) var isLoadingAd = false
     @Published private(set) var isAdPresenting = false
     @Published private(set) var errorMessage: String?
+    @Published private(set) var isStartupVisible = true
 
     private let stateStore: any DailyInterstitialGateStoring
     private let adService: any InterstitialAdServing
@@ -76,7 +77,7 @@ final class DailyInterstitialGateViewModel: ObservableObject {
     }
 
     var shouldTrackScreenTaps: Bool {
-        !hasReachedThresholdToday && !hasCompletedToday && !isAdPresenting
+        isStartupVisible && !hasReachedThresholdToday && !hasCompletedToday && !isAdPresenting
     }
 
     var titleText: String {
@@ -112,6 +113,10 @@ final class DailyInterstitialGateViewModel: ObservableObject {
 
         let state = stateStore.currentState()
         sync(with: state)
+
+        guard isStartupVisible else {
+            return
+        }
 
         guard shouldPrepareAd(for: state) else {
             return
@@ -160,6 +165,17 @@ final class DailyInterstitialGateViewModel: ObservableObject {
         }
     }
 
+    func setStartupVisibility(_ isVisible: Bool) {
+        guard isStartupVisible != isVisible else { return }
+        isStartupVisible = isVisible
+
+        if !isVisible {
+            setErrorMessage(nil)
+        }
+
+        updateGatePresentation()
+    }
+
     private func sync(with state: DailyInterstitialGateState) {
         hasReachedThresholdToday = state.hasReachedThreshold
         hasCompletedToday = state.hasCompletedToday
@@ -202,7 +218,7 @@ final class DailyInterstitialGateViewModel: ObservableObject {
     }
 
     private func updateGatePresentation() {
-        let newValue = hasReachedThresholdToday && isAdReady && !isAdPresenting
+        let newValue = isStartupVisible && hasReachedThresholdToday && isAdReady && !isAdPresenting
         guard isGatePresented != newValue else { return }
         isGatePresented = newValue
         if newValue {

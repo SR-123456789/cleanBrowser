@@ -6,7 +6,16 @@
 	<string>$(BROWSER_INTERSTITIAL_AD_UNIT_ID)</string>
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-7782777506427620~5964742075</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>PostHogProjectToken</key>
 	<string>$(POSTHOG_PROJECT_TOKEN)</string>
+	<key>PublicAPIKey</key>
+	<string>$(PUBLIC_API_KEY)</string>
+	<key>StartupAPIBaseURL</key>
+	<string>$(STARTUP_API_BASE_URL)</string>
 </dict>
 </plist>

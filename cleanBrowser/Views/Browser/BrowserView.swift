@@ -139,10 +139,17 @@ struct BrowserView: View {
             SettingsSheet(viewModel: settingsViewModel, showPINSettings: $viewModel.showPINSettings)
         }
         .onAppear {
+            dailyInterstitialGateViewModel.setStartupVisibility(viewModel.browserStore.isDailyInterstitialVisible)
             dailyInterstitialGateViewModel.prepareIfNeeded(
                 canShowPersonalizedAds: attManager.canShowPersonalizedAds
             )
             viewModel.handleModalPresentationChanged()
+        }
+        .onChange(of: viewModel.browserStore.isDailyInterstitialVisible) { _, isVisible in
+            dailyInterstitialGateViewModel.setStartupVisibility(isVisible)
+            dailyInterstitialGateViewModel.prepareIfNeeded(
+                canShowPersonalizedAds: attManager.canShowPersonalizedAds
+            )
         }
         .onChange(of: attManager.canShowPersonalizedAds) { _, canShowPersonalizedAds in
             dailyInterstitialGateViewModel.prepareIfNeeded(
