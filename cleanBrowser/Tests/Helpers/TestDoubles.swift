@@ -104,3 +104,134 @@ final class StartupUpdatePromptHistoryStoreStub: StartupUpdatePromptHistoryStori
         appVersion + "\n" + message
     }
 }
+
+@MainActor
+final class StartupAnalyticsTrackerStub: AnalyticsTracking {
+    struct StartupLoadedCall: Equatable {
+        let appVersion: String
+        let mustUpdate: Bool
+        let shouldUpdate: Bool
+        let repeatUpdatePrompt: Bool
+        let dailyInterstitialIsShow: Bool
+        let updateLinkPresent: Bool
+    }
+
+    struct StartupLoadFailedCall: Equatable {
+        let appVersion: String
+        let errorType: StartupLoadErrorType
+        let httpStatus: Int?
+        let adsHiddenOnFailure: Bool
+    }
+
+    struct StartupUpdatePromptShownCall: Equatable {
+        let appVersion: String
+        let updateType: StartupUpdateType
+        let repeatUpdatePrompt: Bool
+        let updateLinkPresent: Bool
+        let message: String
+    }
+
+    struct StartupUpdatePromptActionCall: Equatable {
+        let appVersion: String
+        let updateType: StartupUpdateType
+        let action: StartupUpdatePromptAction
+    }
+
+    private(set) var appOpenedParameters: [(String, AnalyticsKeyboardMode)] = []
+    private(set) var adDialogShownCount = 0
+    private(set) var adDialogViewedCount = 0
+    private(set) var keyboardChoiceDialogShownCount = 0
+    private(set) var selectedKeyboardModes: [AnalyticsKeyboardMode] = []
+    private(set) var startupLoadedCalls: [StartupLoadedCall] = []
+    private(set) var startupLoadFailedCalls: [StartupLoadFailedCall] = []
+    private(set) var startupUpdatePromptShownCalls: [StartupUpdatePromptShownCall] = []
+    private(set) var startupUpdatePromptActionCalls: [StartupUpdatePromptActionCall] = []
+
+    func trackAppOpened(appVersion: String, keyboardMode: AnalyticsKeyboardMode) {
+        appOpenedParameters.append((appVersion, keyboardMode))
+    }
+
+    func trackAdDialogShown() {
+        adDialogShownCount += 1
+    }
+
+    func trackAdDialogViewed() {
+        adDialogViewedCount += 1
+    }
+
+    func trackKeyboardChoiceDialogShown() {
+        keyboardChoiceDialogShownCount += 1
+    }
+
+    func trackKeyboardChoiceSelected(_ keyboardMode: AnalyticsKeyboardMode) {
+        selectedKeyboardModes.append(keyboardMode)
+    }
+
+    func trackStartupLoaded(
+        appVersion: String,
+        mustUpdate: Bool,
+        shouldUpdate: Bool,
+        repeatUpdatePrompt: Bool,
+        dailyInterstitialIsShow: Bool,
+        updateLinkPresent: Bool
+    ) {
+        startupLoadedCalls.append(
+            .init(
+                appVersion: appVersion,
+                mustUpdate: mustUpdate,
+                shouldUpdate: shouldUpdate,
+                repeatUpdatePrompt: repeatUpdatePrompt,
+                dailyInterstitialIsShow: dailyInterstitialIsShow,
+                updateLinkPresent: updateLinkPresent
+            )
+        )
+    }
+
+    func trackStartupLoadFailed(
+        appVersion: String,
+        errorType: StartupLoadErrorType,
+        httpStatus: Int?,
+        adsHiddenOnFailure: Bool
+    ) {
+        startupLoadFailedCalls.append(
+            .init(
+                appVersion: appVersion,
+                errorType: errorType,
+                httpStatus: httpStatus,
+                adsHiddenOnFailure: adsHiddenOnFailure
+            )
+        )
+    }
+
+    func trackStartupUpdatePromptShown(
+        appVersion: String,
+        updateType: StartupUpdateType,
+        repeatUpdatePrompt: Bool,
+        updateLinkPresent: Bool,
+        message: String
+    ) {
+        startupUpdatePromptShownCalls.append(
+            .init(
+                appVersion: appVersion,
+                updateType: updateType,
+                repeatUpdatePrompt: repeatUpdatePrompt,
+                updateLinkPresent: updateLinkPresent,
+                message: message
+            )
+        )
+    }
+
+    func trackStartupUpdatePromptAction(
+        appVersion: String,
+        updateType: StartupUpdateType,
+        action: StartupUpdatePromptAction
+    ) {
+        startupUpdatePromptActionCalls.append(
+            .init(
+                appVersion: appVersion,
+                updateType: updateType,
+                action: action
+            )
+        )
+    }
+}

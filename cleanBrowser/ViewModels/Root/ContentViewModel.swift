@@ -30,6 +30,7 @@ final class ContentViewModel: ObservableObject {
     private let startupLoader: any StartupLoading
     private let startupAdVisibilityController: any StartupAdVisibilityControlling
     private let updatePromptHistoryStore: any StartupUpdatePromptHistoryStoring
+    private let analytics: any AnalyticsTracking
     private let appVersionProvider: () -> String
     private var shouldLockOnNextActive = false
     private var pendingInactiveShieldWorkItem: DispatchWorkItem?
@@ -43,6 +44,7 @@ final class ContentViewModel: ObservableObject {
         startupLoader: any StartupLoading = StartupAPIClient(),
         startupAdVisibilityController: any StartupAdVisibilityControlling,
         updatePromptHistoryStore: any StartupUpdatePromptHistoryStoring = UserDefaultsStartupUpdatePromptHistoryStore(),
+        analytics: any AnalyticsTracking = NoopAnalyticsManager(),
         appVersionProvider: @escaping () -> String = { Bundle.main.cleanBrowserAppVersion },
         inactiveShieldDelay: TimeInterval = 0.35,
         scheduleDelayedWork: @escaping (TimeInterval, DispatchWorkItem) -> Void = { delay, workItem in
@@ -53,6 +55,7 @@ final class ContentViewModel: ObservableObject {
         self.startupLoader = startupLoader
         self.startupAdVisibilityController = startupAdVisibilityController
         self.updatePromptHistoryStore = updatePromptHistoryStore
+        self.analytics = analytics
         self.appVersionProvider = appVersionProvider
         self.inactiveShieldDelay = inactiveShieldDelay
         self.scheduleDelayedWork = scheduleDelayedWork
@@ -135,6 +138,13 @@ final class ContentViewModel: ObservableObject {
                 hasLoadedStartup = true
             } catch {
                 startupAdVisibilityController.isDailyInterstitialVisible = false
+                let failure = classifyStartupLoadError(error)
+                analytics.trackStartupLoadFailed(
+                    appVersion: appVersion,
+                    errorType: failure.errorType,
+                    httpStatus: failure.httpStatus,
+                    adsHiddenOnFailure: true
+                )
                 logStartupLoadFailure(error)
                 startupUpdatePrompt = nil
             }
@@ -144,8 +154,29 @@ final class ContentViewModel: ObservableObject {
     }
 
     func dismissStartupUpdatePrompt() {
-        guard startupUpdatePrompt?.isMandatory == false else { return }
+        guard let prompt = startupUpdatePrompt, !prompt.isMandatory else { return }
+        analytics.trackStartupUpdatePromptAction(
+            appVersion: appVersionProvider(),
+            updateType: prompt.analyticsUpdateType,
+            action: .dismiss
+        )
         startupUpdatePrompt = nil
+    }
+
+    func handleStartupUpdatePromptPrimaryAction() -> URL? {
+        guard let prompt = startupUpdatePrompt else { return nil }
+
+        analytics.trackStartupUpdatePromptAction(
+            appVersion: appVersionProvider(),
+            updateType: prompt.analyticsUpdateType,
+            action: .openStore
+        )
+
+        if !prompt.isMandatory {
+            startupUpdatePrompt = nil
+        }
+
+        return prompt.updateURL
     }
 
     private func scheduleInactiveShield() {
@@ -166,12 +197,32 @@ final class ContentViewModel: ObservableObject {
 
     private func applyStartupResponse(_ response: StartupResponse, appVersion: String) {
         let isDailyInterstitialVisible = response.ads.first(where: { $0.adID == "daily_interstitial" })?.isShow ?? false
+        let updateLinkPresent = !response.update.updateLink.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         startupAdVisibilityController.isDailyInterstitialVisible = isDailyInterstitialVisible
+        analytics.trackStartupLoaded(
+            appVersion: appVersion,
+            mustUpdate: response.update.mustUpdate,
+            shouldUpdate: response.update.shouldUpdate,
+            repeatUpdatePrompt: response.update.repeatUpdatePrompt,
+            dailyInterstitialIsShow: isDailyInterstitialVisible,
+            updateLinkPresent: updateLinkPresent
+        )
 
-        startupUpdatePrompt = makeStartupUpdatePrompt(
+        let prompt = makeStartupUpdatePrompt(
             from: response.update,
             appVersion: appVersion
         )
+        startupUpdatePrompt = prompt
+
+        if let prompt {
+            analytics.trackStartupUpdatePromptShown(
+                appVersion: appVersion,
+                updateType: prompt.analyticsUpdateType,
+                repeatUpdatePrompt: response.update.repeatUpdatePrompt,
+                updateLinkPresent: updateLinkPresent,
+                message: prompt.message
+            )
+        }
     }
 
     private func makeStartupUpdatePrompt(
@@ -214,5 +265,34 @@ final class ContentViewModel: ObservableObject {
 #if DEBUG
         print("Startup API load failed:", error)
 #endif
+    }
+
+    private func classifyStartupLoadError(_ error: Error) -> (errorType: StartupLoadErrorType, httpStatus: Int?) {
+        if let error = error as? StartupAPIClientError {
+            switch error {
+            case .missingConfiguration, .invalidURL:
+                return (.configuration, nil)
+            case .httpError(let statusCode):
+                return (.httpStatus, statusCode)
+            case .invalidResponse:
+                return (.unknown, nil)
+            }
+        }
+
+        if error is DecodingError {
+            return (.decoding, nil)
+        }
+
+        if error is URLError {
+            return (.network, nil)
+        }
+
+        return (.unknown, nil)
+    }
+}
+
+private extension StartupUpdatePrompt {
+    var analyticsUpdateType: StartupUpdateType {
+        isMandatory ? .mandatory : .recommended
     }
 }

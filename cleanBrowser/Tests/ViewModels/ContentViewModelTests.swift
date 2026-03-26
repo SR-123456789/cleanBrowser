@@ -84,6 +84,7 @@ final class ContentViewModelTests: XCTestCase {
 
     func test_loadStartupIfNeeded_showsMandatoryPromptAndDisablesDailyInterstitial() async {
         let startupLoader = StartupLoaderStub()
+        let analytics = StartupAnalyticsTrackerStub()
         startupLoader.response = StartupResponse(
             update: StartupUpdateResponse(
                 mustUpdate: true,
@@ -102,6 +103,7 @@ final class ContentViewModelTests: XCTestCase {
             startupLoader: startupLoader,
             startupAdVisibilityController: adVisibilityController,
             updatePromptHistoryStore: StartupUpdatePromptHistoryStoreStub(),
+            analytics: analytics,
             appVersionProvider: { "2.1.4" }
         )
 
@@ -112,6 +114,31 @@ final class ContentViewModelTests: XCTestCase {
         XCTAssertEqual(adVisibilityController.isDailyInterstitialVisible, false)
         XCTAssertEqual(sut.startupUpdatePrompt?.isMandatory, true)
         XCTAssertEqual(sut.startupUpdatePrompt?.message, "このバージョンはサポート対象外です。")
+        XCTAssertEqual(
+            analytics.startupLoadedCalls,
+            [
+                .init(
+                    appVersion: "2.1.4",
+                    mustUpdate: true,
+                    shouldUpdate: false,
+                    repeatUpdatePrompt: false,
+                    dailyInterstitialIsShow: false,
+                    updateLinkPresent: true
+                )
+            ]
+        )
+        XCTAssertEqual(
+            analytics.startupUpdatePromptShownCalls,
+            [
+                .init(
+                    appVersion: "2.1.4",
+                    updateType: .mandatory,
+                    repeatUpdatePrompt: false,
+                    updateLinkPresent: true,
+                    message: "このバージョンはサポート対象外です。"
+                )
+            ]
+        )
     }
 
     func test_loadStartupIfNeeded_showsOptionalPromptOnlyOncePerVersionAndMessage() async {
@@ -190,6 +217,7 @@ final class ContentViewModelTests: XCTestCase {
 
     func test_loadStartupIfNeeded_retriesAfterFailure() async {
         let startupLoader = StartupLoaderStub()
+        let analytics = StartupAnalyticsTrackerStub()
         startupLoader.error = TestError.expectedFailure
         let adVisibilityController = StartupAdVisibilityControllerSpy()
         adVisibilityController.isDailyInterstitialVisible = true
@@ -198,6 +226,7 @@ final class ContentViewModelTests: XCTestCase {
             startupLoader: startupLoader,
             startupAdVisibilityController: adVisibilityController,
             updatePromptHistoryStore: StartupUpdatePromptHistoryStoreStub(),
+            analytics: analytics,
             appVersionProvider: { "2.1.3" }
         )
 
@@ -205,6 +234,17 @@ final class ContentViewModelTests: XCTestCase {
         await Task.yield()
 
         XCTAssertEqual(adVisibilityController.isDailyInterstitialVisible, false)
+        XCTAssertEqual(
+            analytics.startupLoadFailedCalls,
+            [
+                .init(
+                    appVersion: "2.1.3",
+                    errorType: .unknown,
+                    httpStatus: nil,
+                    adsHiddenOnFailure: true
+                )
+            ]
+        )
 
         startupLoader.error = nil
         startupLoader.response = StartupResponse(
@@ -251,5 +291,76 @@ final class ContentViewModelTests: XCTestCase {
         await Task.yield()
 
         XCTAssertEqual(adVisibilityController.isDailyInterstitialVisible, false)
+    }
+
+    func test_dismissStartupUpdatePrompt_tracksDismissAction() async {
+        let startupLoader = StartupLoaderStub()
+        let analytics = StartupAnalyticsTrackerStub()
+        startupLoader.response = StartupResponse(
+            update: StartupUpdateResponse(
+                mustUpdate: false,
+                shouldUpdate: true,
+                repeatUpdatePrompt: true,
+                updateLink: "https://apps.apple.com/app/id1234567890",
+                message: "アップデートしてください。"
+            ),
+            ads: []
+        )
+        let sut = ContentViewModel(
+            pinService: PINServiceStub(),
+            startupLoader: startupLoader,
+            startupAdVisibilityController: StartupAdVisibilityControllerSpy(),
+            updatePromptHistoryStore: StartupUpdatePromptHistoryStoreStub(),
+            analytics: analytics,
+            appVersionProvider: { "2.1.4" }
+        )
+
+        sut.loadStartupIfNeeded()
+        await Task.yield()
+        sut.dismissStartupUpdatePrompt()
+
+        XCTAssertNil(sut.startupUpdatePrompt)
+        XCTAssertEqual(
+            analytics.startupUpdatePromptActionCalls,
+            [
+                .init(appVersion: "2.1.4", updateType: .recommended, action: .dismiss)
+            ]
+        )
+    }
+
+    func test_handleStartupUpdatePromptPrimaryAction_tracksOpenStoreAction() async {
+        let startupLoader = StartupLoaderStub()
+        let analytics = StartupAnalyticsTrackerStub()
+        startupLoader.response = StartupResponse(
+            update: StartupUpdateResponse(
+                mustUpdate: true,
+                shouldUpdate: false,
+                repeatUpdatePrompt: true,
+                updateLink: "https://apps.apple.com/app/id1234567890",
+                message: "このバージョンはサポート対象外です。"
+            ),
+            ads: []
+        )
+        let sut = ContentViewModel(
+            pinService: PINServiceStub(),
+            startupLoader: startupLoader,
+            startupAdVisibilityController: StartupAdVisibilityControllerSpy(),
+            updatePromptHistoryStore: StartupUpdatePromptHistoryStoreStub(),
+            analytics: analytics,
+            appVersionProvider: { "2.1.3" }
+        )
+
+        sut.loadStartupIfNeeded()
+        await Task.yield()
+        let url = sut.handleStartupUpdatePromptPrimaryAction()
+
+        XCTAssertEqual(url?.absoluteString, "https://apps.apple.com/app/id1234567890")
+        XCTAssertEqual(
+            analytics.startupUpdatePromptActionCalls,
+            [
+                .init(appVersion: "2.1.3", updateType: .mandatory, action: .openStore)
+            ]
+        )
+        XCTAssertEqual(sut.startupUpdatePrompt?.isMandatory, true)
     }
 }

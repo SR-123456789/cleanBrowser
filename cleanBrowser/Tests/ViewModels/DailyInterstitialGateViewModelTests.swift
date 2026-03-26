@@ -328,4 +328,34 @@ private final class AnalyticsTrackerStub: AnalyticsTracking {
     func trackKeyboardChoiceDialogShown() {}
 
     func trackKeyboardChoiceSelected(_ keyboardMode: AnalyticsKeyboardMode) {}
+
+    func trackStartupLoaded(
+        appVersion: String,
+        mustUpdate: Bool,
+        shouldUpdate: Bool,
+        repeatUpdatePrompt: Bool,
+        dailyInterstitialIsShow: Bool,
+        updateLinkPresent: Bool
+    ) {}
+
+    func trackStartupLoadFailed(
+        appVersion: String,
+        errorType: StartupLoadErrorType,
+        httpStatus: Int?,
+        adsHiddenOnFailure: Bool
+    ) {}
+
+    func trackStartupUpdatePromptShown(
+        appVersion: String,
+        updateType: StartupUpdateType,
+        repeatUpdatePrompt: Bool,
+        updateLinkPresent: Bool,
+        message: String
+    ) {}
+
+    func trackStartupUpdatePromptAction(
+        appVersion: String,
+        updateType: StartupUpdateType,
+        action: StartupUpdatePromptAction
+    ) {}
 }

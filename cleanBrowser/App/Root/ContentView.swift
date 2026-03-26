@@ -23,7 +23,8 @@ struct ContentView: View {
         _viewModel = StateObject(
             wrappedValue: ContentViewModel(
                 pinService: pinService,
-                startupAdVisibilityController: browserStore
+                startupAdVisibilityController: browserStore,
+                analytics: analyticsManager
             )
         )
     }
@@ -79,23 +80,22 @@ struct ContentView: View {
     @ViewBuilder
     private var startupUpdateOverlay: some View {
         if let startupUpdatePrompt = viewModel.startupUpdatePrompt {
-            StartupUpdateOverlay(
-                prompt: startupUpdatePrompt,
-                onPrimaryAction: {
-                    handleStartupUpdatePrimaryAction(startupUpdatePrompt)
-                },
-                onDismiss: startupUpdatePrompt.isMandatory
-                    ? nil
-                    : { viewModel.dismissStartupUpdatePrompt() }
-            )
+                StartupUpdateOverlay(
+                    prompt: startupUpdatePrompt,
+                    onPrimaryAction: {
+                        handleStartupUpdatePrimaryAction()
+                    },
+                    onDismiss: startupUpdatePrompt.isMandatory
+                        ? nil
+                        : { viewModel.dismissStartupUpdatePrompt() }
+                )
         }
     }
 
-    private func handleStartupUpdatePrimaryAction(_ prompt: StartupUpdatePrompt) {
-        guard let updateURL = prompt.updateURL else { return }
-        openURL(updateURL)
-        if !prompt.isMandatory {
-            viewModel.dismissStartupUpdatePrompt()
+    private func handleStartupUpdatePrimaryAction() {
+        let updateURL = viewModel.handleStartupUpdatePromptPrimaryAction()
+        if let updateURL {
+            openURL(updateURL)
         }
     }
 }

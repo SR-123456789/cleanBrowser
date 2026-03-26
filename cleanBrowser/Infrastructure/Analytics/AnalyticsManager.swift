@@ -10,12 +10,56 @@ enum AnalyticsKeyboardMode: String, Equatable {
     }
 }
 
+enum StartupLoadErrorType: String, Equatable {
+    case configuration
+    case network
+    case httpStatus = "http_status"
+    case decoding
+    case unknown
+}
+
+enum StartupUpdateType: String, Equatable {
+    case mandatory
+    case recommended
+}
+
+enum StartupUpdatePromptAction: String, Equatable {
+    case openStore = "open_store"
+    case dismiss
+}
+
 protocol AnalyticsTracking: AnyObject {
     func trackAppOpened(appVersion: String, keyboardMode: AnalyticsKeyboardMode)
     func trackAdDialogShown()
     func trackAdDialogViewed()
     func trackKeyboardChoiceDialogShown()
     func trackKeyboardChoiceSelected(_ keyboardMode: AnalyticsKeyboardMode)
+    func trackStartupLoaded(
+        appVersion: String,
+        mustUpdate: Bool,
+        shouldUpdate: Bool,
+        repeatUpdatePrompt: Bool,
+        dailyInterstitialIsShow: Bool,
+        updateLinkPresent: Bool
+    )
+    func trackStartupLoadFailed(
+        appVersion: String,
+        errorType: StartupLoadErrorType,
+        httpStatus: Int?,
+        adsHiddenOnFailure: Bool
+    )
+    func trackStartupUpdatePromptShown(
+        appVersion: String,
+        updateType: StartupUpdateType,
+        repeatUpdatePrompt: Bool,
+        updateLinkPresent: Bool,
+        message: String
+    )
+    func trackStartupUpdatePromptAction(
+        appVersion: String,
+        updateType: StartupUpdateType,
+        action: StartupUpdatePromptAction
+    )
 }
 
 final class AnalyticsManager: AnalyticsTracking {
@@ -61,6 +105,80 @@ final class AnalyticsManager: AnalyticsTracking {
             "keyboard_choice_selected",
             properties: [
                 "keyboard_mode": keyboardMode.rawValue,
+            ]
+        )
+    }
+
+    func trackStartupLoaded(
+        appVersion: String,
+        mustUpdate: Bool,
+        shouldUpdate: Bool,
+        repeatUpdatePrompt: Bool,
+        dailyInterstitialIsShow: Bool,
+        updateLinkPresent: Bool
+    ) {
+        capture(
+            "startup_loaded",
+            properties: [
+                "app_version": appVersion,
+                "must_update": mustUpdate,
+                "should_update": shouldUpdate,
+                "repeat_update_prompt": repeatUpdatePrompt,
+                "daily_interstitial_is_show": dailyInterstitialIsShow,
+                "update_link_present": updateLinkPresent,
+            ]
+        )
+    }
+
+    func trackStartupLoadFailed(
+        appVersion: String,
+        errorType: StartupLoadErrorType,
+        httpStatus: Int?,
+        adsHiddenOnFailure: Bool
+    ) {
+        var properties: [String: Any] = [
+            "app_version": appVersion,
+            "error_type": errorType.rawValue,
+            "ads_hidden_on_failure": adsHiddenOnFailure,
+        ]
+
+        if let httpStatus {
+            properties["http_status"] = httpStatus
+        }
+
+        capture("startup_load_failed", properties: properties)
+    }
+
+    func trackStartupUpdatePromptShown(
+        appVersion: String,
+        updateType: StartupUpdateType,
+        repeatUpdatePrompt: Bool,
+        updateLinkPresent: Bool,
+        message: String
+    ) {
+        capture(
+            "startup_update_prompt_shown",
+            properties: [
+                "app_version": appVersion,
+                "update_type": updateType.rawValue,
+                "repeat_update_prompt": repeatUpdatePrompt,
+                "update_link_present": updateLinkPresent,
+                "message": message,
+            ]
+        )
+    }
+
+    func trackStartupUpdatePromptAction(
+        appVersion: String,
+        updateType: StartupUpdateType,
+        action: StartupUpdatePromptAction
+    ) {
+        capture(
+            "startup_update_prompt_action",
+            properties: [
+                "app_version": appVersion,
+                "update_type": updateType.rawValue,
+                "action": action.rawValue,
             ]
         )
     }
@@ -111,6 +229,32 @@ final class NoopAnalyticsManager: AnalyticsTracking {
     func trackAdDialogViewed() {}
     func trackKeyboardChoiceDialogShown() {}
     func trackKeyboardChoiceSelected(_ keyboardMode: AnalyticsKeyboardMode) {}
+    func trackStartupLoaded(
+        appVersion: String,
+        mustUpdate: Bool,
+        shouldUpdate: Bool,
+        repeatUpdatePrompt: Bool,
+        dailyInterstitialIsShow: Bool,
+        updateLinkPresent: Bool
+    ) {}
+    func trackStartupLoadFailed(
+        appVersion: String,
+        errorType: StartupLoadErrorType,
+        httpStatus: Int?,
+        adsHiddenOnFailure: Bool
+    ) {}
+    func trackStartupUpdatePromptShown(
+        appVersion: String,
+        updateType: StartupUpdateType,
+        repeatUpdatePrompt: Bool,
+        updateLinkPresent: Bool,
+        message: String
+    ) {}
+    func trackStartupUpdatePromptAction(
+        appVersion: String,
+        updateType: StartupUpdateType,
+        action: StartupUpdatePromptAction
+    ) {}
 }
 
 extension Bundle {
