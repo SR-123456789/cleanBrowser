@@ -521,7 +521,7 @@
 			repositoryURL = "https://github.com/googleads/swift-package-manager-google-mobile-ads";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 12.8.0;
+				minimumVersion = 12.14.0;
 			};
 		};
 		9A1E00012F7A000100000011 /* XCRemoteSwiftPackageReference "posthog-ios" */ = {
